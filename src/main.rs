@@ -1,5 +1,6 @@
 use std::time::{Duration, Instant};
 
+use gl_wrapper::shader::Shader;
 use glutin::{
     dpi::PhysicalSize,
     event::{Event, WindowEvent},
@@ -11,14 +12,10 @@ use glutin::{
 use imgui::*;
 use imgui_opengl_renderer::Renderer;
 use imgui_winit_support::{HiDpiMode, WinitPlatform};
+use lfg::flare::Flare;
 
-mod flare;
-mod geometry;
-mod ghost;
-mod shader;
-
-const VERT: &str = include_str!("../shaders/test.vert");
-const FRAG: &str = include_str!("../shaders/test.frag");
+pub mod gl_wrapper;
+pub mod lfg;
 
 const FLARE_VERT: &str = include_str!("../shaders/quad.vert");
 const FLARE_FRAG: &str = include_str!("../shaders/flare.frag");
@@ -42,9 +39,8 @@ fn main() {
 
     let mut last_frame = Instant::now();
 
-    let flare_s = shader::Shader::from_str(FLARE_VERT, FLARE_FRAG).unwrap();
-
-    let flare = flare::Flare::new();
+    let flare_s = Shader::from_str(FLARE_VERT, FLARE_FRAG).unwrap();
+    let flare = Flare::new();
 
     event_loop.run(move |event, _, control_flow| {
         *control_flow = ControlFlow::Wait;

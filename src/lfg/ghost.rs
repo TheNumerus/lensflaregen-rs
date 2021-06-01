@@ -1,4 +1,4 @@
-use crate::{
+use crate::gl_wrapper::{
     geometry::{AttrSize, Geometry, GeometryBuilder, GeometryType},
     shader::Shader,
 };
