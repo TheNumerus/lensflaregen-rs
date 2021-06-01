@@ -1,0 +1,14 @@
+[package]
+name = "lensflaregen-rs"
+version = "0.1.0"
+authors = ["Petr.volf <petr.volf216@gmail.com>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+gl = "0.14.0"
+glutin = "0.26"
+imgui = "0.7.0"
+imgui-winit-support = "0.7.1"
+imgui-opengl-renderer = "0.11.0"
