@@ -51,6 +51,8 @@ fn main() -> Result<()> {
 
     let mut flare = Flare::new();
 
+    let mut flare_color = [1.0_f32, 1.0, 1.0, 1.0];
+
     event_loop.run(move |event, _, control_flow| {
         *control_flow = ControlFlow::Wait;
 
@@ -80,9 +82,10 @@ fn main() -> Result<()> {
                 let size = windowed_context.window().inner_size();
                 let (pos_x, pos_y) = (position.x / size.width as f64, 1.0 - position.y / size.height as f64);
                 flare.set_position(pos_x as f32, pos_y as f32);
+                flare.set_color(&flare_color);
             }
             Event::RedrawRequested(_) => unsafe {
-                gl::ClearColor(0.1, 0.1, 0.1, 1.0);
+                gl::ClearColor(0.0, 0.0, 0.0, 1.0);
                 gl::Clear(gl::COLOR_BUFFER_BIT);
 
                 flare.draw(&flare_s);
@@ -90,7 +93,7 @@ fn main() -> Result<()> {
                 let now = Instant::now();
                 let delta = now - last_frame;
                 last_frame = now;
-                imgui_draw(&mut imgui, &platform, &windowed_context, delta, &renderer);
+                imgui_draw(&mut imgui, &platform, &windowed_context, delta, &renderer, &mut flare_color);
                 windowed_context.swap_buffers().unwrap();
                 windowed_context.window().request_redraw();
             },
@@ -99,7 +102,14 @@ fn main() -> Result<()> {
     });
 }
 
-fn imgui_draw(imgui: &mut Context, platform: &WinitPlatform, windowed_context: &WindowedContext<PossiblyCurrent>, delta: Duration, renderer: &Renderer) {
+fn imgui_draw(
+    imgui: &mut Context,
+    platform: &WinitPlatform,
+    windowed_context: &WindowedContext<PossiblyCurrent>,
+    delta: Duration,
+    renderer: &Renderer,
+    color: &mut [f32; 4],
+) {
     let io = imgui.io_mut();
     platform.prepare_frame(io, windowed_context.window()).expect("Failed to start frame");
 
@@ -107,10 +117,13 @@ fn imgui_draw(imgui: &mut Context, platform: &WinitPlatform, windowed_context: &
 
     let ui = imgui.frame();
 
+    let color = imgui::EditableColor::Float4(color);
+
     Window::new(im_str!("FPS counter"))
         .size([300.0, 110.0], Condition::FirstUseEver)
         .build(&ui, || {
             ui.text(format!("FPS: {}", ui.io().framerate));
+            imgui::ColorEdit::new(im_str!("Flare Color"), color).build(&ui);
         });
 
     renderer.render(ui);
