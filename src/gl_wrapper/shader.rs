@@ -1,23 +1,28 @@
 use std::{
     ffi::{CStr, CString},
+    fmt::Display,
     ptr,
 };
 
 use gl::types::GLenum;
+use log::{debug, error};
+use thiserror::Error;
 
 pub struct Shader {
     program_id: u32,
 }
 
+const MAX_ERR_LEN: i32 = 1024;
+
 impl Shader {
-    pub fn from_str(vert: &str, frag: &str) -> Result<Self, String> {
+    pub fn from_str(vert: &str, frag: &str) -> Result<Self, ShaderCompilationError> {
         unsafe {
             let vert_id = compile_shader(ShaderType::Vertex, vert)?;
             let frag_id = compile_shader(ShaderType::Fragment, frag)?;
 
             let mut success = 0;
-            let mut info_log = [0_i8; 512];
-            let mut info_len = 512;
+            let mut info_log = [0_i8; MAX_ERR_LEN as usize];
+            let mut info_len = 0;
 
             let program_id = gl::CreateProgram();
             gl::AttachShader(program_id, vert_id);
@@ -26,13 +31,18 @@ impl Shader {
             // check for linking errors
             gl::GetProgramiv(program_id, gl::LINK_STATUS, ptr::addr_of_mut!(success));
             if success != 1 {
-                gl::GetProgramInfoLog(program_id, 512, ptr::addr_of_mut!(info_len), info_log.as_mut_ptr());
+                gl::GetProgramInfoLog(program_id, MAX_ERR_LEN, ptr::addr_of_mut!(info_len), info_log.as_mut_ptr());
                 let msg = CStr::from_ptr(info_log[0..(info_len as usize + 1)].as_mut_ptr());
-                return Err(msg.to_string_lossy().to_string());
+                let msg = snailquote::unescape(&msg.to_string_lossy()).unwrap();
+                let e = ShaderCompilationError::LinkageError(msg);
+                error!("Shader linking error");
+                return Err(e);
             }
 
             gl::DeleteShader(vert_id);
             gl::DeleteShader(frag_id);
+
+            debug!("Shader program {} constructed", program_id);
 
             Ok(Self { program_id })
         }
@@ -81,10 +91,19 @@ impl Drop for Shader {
         }
     }
 }
-
-enum ShaderType {
+#[derive(Debug, Clone, Copy)]
+pub enum ShaderType {
     Fragment,
     Vertex,
+}
+
+impl Display for ShaderType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            ShaderType::Fragment => f.write_str("Fragment"),
+            ShaderType::Vertex => f.write_str("Vertex"),
+        }
+    }
 }
 
 impl From<ShaderType> for GLenum {
@@ -96,7 +115,7 @@ impl From<ShaderType> for GLenum {
     }
 }
 
-unsafe fn compile_shader(shader_type: ShaderType, src: &str) -> Result<u32, String> {
+unsafe fn compile_shader(shader_type: ShaderType, src: &str) -> Result<u32, ShaderCompilationError> {
     //
     let src_cstr = CString::new(src).unwrap();
     let src_ptr = src_cstr.as_ptr();
@@ -106,15 +125,26 @@ unsafe fn compile_shader(shader_type: ShaderType, src: &str) -> Result<u32, Stri
     gl::CompileShader(shader_id);
 
     let mut success = 0;
-    let mut info_log = [0_i8; 512];
+    let mut info_log = [0_i8; MAX_ERR_LEN as usize];
     let mut info_len = 0;
     gl::GetShaderiv(shader_id, gl::COMPILE_STATUS, ptr::addr_of_mut!(success));
 
     if success != 1 {
-        gl::GetShaderInfoLog(shader_id, 512, ptr::addr_of_mut!(info_len), info_log.as_mut_ptr());
+        gl::GetShaderInfoLog(shader_id, MAX_ERR_LEN, ptr::addr_of_mut!(info_len), info_log.as_mut_ptr());
         let msg = CStr::from_ptr(info_log[0..(info_len as usize + 1)].as_mut_ptr());
-        return Err(msg.to_string_lossy().to_string());
+        let msg = snailquote::unescape(&msg.to_string_lossy()).unwrap();
+        let e = ShaderCompilationError::ProgramError(shader_type, msg);
+        error!("{} shader compilation error", shader_type);
+        return Err(e);
     }
 
     Ok(shader_id)
+}
+
+#[derive(Error, Debug)]
+pub enum ShaderCompilationError {
+    #[error("{0} shader program error: \n{1}")]
+    ProgramError(ShaderType, String),
+    #[error("Shader linking error: \n{0}")]
+    LinkageError(String),
 }
