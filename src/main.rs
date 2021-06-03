@@ -1,6 +1,7 @@
 use std::time::{Duration, Instant};
 
-use gl_wrapper::shader::Shader;
+use anyhow::{Context as _, Result};
+
 use glutin::{
     dpi::PhysicalSize,
     event::{Event, WindowEvent},
@@ -9,54 +10,38 @@ use glutin::{
     ContextBuilder, PossiblyCurrent, WindowedContext,
 };
 
-use simple_logger::SimpleLogger;
-
-use anyhow::{Context as _, Result};
-
 use imgui::*;
 use imgui_opengl_renderer::Renderer;
 use imgui_winit_support::{HiDpiMode, WinitPlatform};
-use lfg::flare::Flare;
+
+use simple_logger::SimpleLogger;
 
 pub mod gl_wrapper;
 pub mod lfg;
 
-const COMMON_SHADER: &str = include_str!("../shaders/common.glsl");
-
-const FLARE_VERT: &str = include_str!("../shaders/quad.vert");
-const FLARE_FRAG: &str = include_str!("../shaders/flare.frag");
+use lfg::{effect::Effect, shader_lib::ShaderLib};
 
 fn main() -> Result<()> {
     SimpleLogger::new().init().unwrap();
 
-    let event_loop = EventLoop::new();
-    let window = WindowBuilder::new()
-        .with_inner_size(PhysicalSize::new(1280, 720))
-        .with_title("Lens Flare Generator");
-
-    let windowed_context = ContextBuilder::new().build_windowed(window, &event_loop).unwrap();
-
-    let windowed_context = unsafe { windowed_context.make_current().unwrap() };
-
-    gl::load_with(|s| windowed_context.get_proc_address(s) as *const _);
+    let (event_loop, context) = create_window();
 
     let mut imgui = Context::create();
     let mut platform = WinitPlatform::init(&mut imgui);
-    let renderer = imgui_opengl_renderer::Renderer::new(&mut imgui, |s| windowed_context.get_proc_address(s) as *const _);
-    platform.attach_window(imgui.io_mut(), windowed_context.window(), HiDpiMode::Locked(1.0));
+    let renderer = imgui_opengl_renderer::Renderer::new(&mut imgui, |s| context.get_proc_address(s) as *const _);
+    platform.attach_window(imgui.io_mut(), context.window(), HiDpiMode::Locked(1.0));
 
     let mut last_frame = Instant::now();
 
-    let flare_s = Shader::from_str(FLARE_VERT, FLARE_FRAG).context("Flare shader compilation error")?;
-
-    let mut flare = Flare::new();
+    let shader_lib = ShaderLib::new().context("Shader compilation error")?;
+    let mut effect = Effect::new();
 
     let mut flare_color = [1.0_f32, 1.0, 1.0, 1.0];
 
     event_loop.run(move |event, _, control_flow| {
         *control_flow = ControlFlow::Wait;
 
-        platform.handle_event(imgui.io_mut(), windowed_context.window(), &event);
+        platform.handle_event(imgui.io_mut(), context.window(), &event);
 
         match event {
             Event::WindowEvent {
@@ -73,33 +58,44 @@ fn main() -> Result<()> {
                 event: WindowEvent::ScaleFactorChanged { new_inner_size, .. },
                 ..
             } => {
-                *new_inner_size = windowed_context.window().inner_size();
+                *new_inner_size = context.window().inner_size();
             }
             Event::WindowEvent {
                 event: WindowEvent::CursorMoved { position, .. },
                 ..
             } => {
-                let size = windowed_context.window().inner_size();
+                let size = context.window().inner_size();
                 let (pos_x, pos_y) = (position.x / size.width as f64, 1.0 - position.y / size.height as f64);
-                flare.set_position(pos_x as f32, pos_y as f32);
-                flare.set_color(&flare_color);
+                effect.flare.set_position(pos_x as f32, pos_y as f32);
+                effect.flare.set_color(&flare_color);
             }
             Event::RedrawRequested(_) => unsafe {
                 gl::ClearColor(0.0, 0.0, 0.0, 1.0);
                 gl::Clear(gl::COLOR_BUFFER_BIT);
 
-                flare.draw(&flare_s);
+                effect.draw(&shader_lib);
 
                 let now = Instant::now();
                 let delta = now - last_frame;
                 last_frame = now;
-                imgui_draw(&mut imgui, &platform, &windowed_context, delta, &renderer, &mut flare_color);
-                windowed_context.swap_buffers().unwrap();
-                windowed_context.window().request_redraw();
+                imgui_draw(&mut imgui, &platform, &context, delta, &renderer, &mut flare_color);
+                context.swap_buffers().unwrap();
+                context.window().request_redraw();
             },
             _ => (),
         }
     });
+}
+
+fn create_window() -> (EventLoop<()>, glutin::ContextWrapper<PossiblyCurrent, glutin::window::Window>) {
+    let event_loop = EventLoop::new();
+    let window = WindowBuilder::new()
+        .with_inner_size(PhysicalSize::new(1280, 720))
+        .with_title("Lens Flare Generator");
+    let context = ContextBuilder::new().build_windowed(window, &event_loop).unwrap();
+    let context = unsafe { context.make_current().unwrap() };
+    gl::load_with(|s| context.get_proc_address(s) as *const _);
+    (event_loop, context)
 }
 
 fn imgui_draw(
@@ -119,7 +115,7 @@ fn imgui_draw(
 
     let color = imgui::EditableColor::Float4(color);
 
-    Window::new(im_str!("FPS counter"))
+    imgui::Window::new(im_str!("FPS counter"))
         .size([300.0, 110.0], Condition::FirstUseEver)
         .build(&ui, || {
             ui.text(format!("FPS: {}", ui.io().framerate));
