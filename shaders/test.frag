@@ -1,5 +1,3 @@
-#version 450 core
-
 uniform vec4 color;
 
 layout (location = 0) in vec3 colorFrag;

@@ -13,41 +13,9 @@ pub struct Shader {
 }
 
 const MAX_ERR_LEN: i32 = 1024;
+const SHADER_VERSION: &str = "#version 450\n";
 
 impl Shader {
-    pub fn from_str(vert: &str, frag: &str) -> Result<Self, ShaderCompilationError> {
-        unsafe {
-            let vert_id = compile_shader(ShaderType::Vertex, vert)?;
-            let frag_id = compile_shader(ShaderType::Fragment, frag)?;
-
-            let mut success = 0;
-            let mut info_log = [0_i8; MAX_ERR_LEN as usize];
-            let mut info_len = 0;
-
-            let program_id = gl::CreateProgram();
-            gl::AttachShader(program_id, vert_id);
-            gl::AttachShader(program_id, frag_id);
-            gl::LinkProgram(program_id);
-            // check for linking errors
-            gl::GetProgramiv(program_id, gl::LINK_STATUS, ptr::addr_of_mut!(success));
-            if success != 1 {
-                gl::GetProgramInfoLog(program_id, MAX_ERR_LEN, ptr::addr_of_mut!(info_len), info_log.as_mut_ptr());
-                let msg = CStr::from_ptr(info_log[0..(info_len as usize + 1)].as_mut_ptr());
-                let msg = snailquote::unescape(&msg.to_string_lossy()).unwrap();
-                let e = ShaderCompilationError::LinkageError(msg);
-                error!("Shader linking error");
-                return Err(e);
-            }
-
-            gl::DeleteShader(vert_id);
-            gl::DeleteShader(frag_id);
-
-            debug!("Shader program {} constructed", program_id);
-
-            Ok(Self { program_id })
-        }
-    }
-
     pub fn bind(&self) {
         unsafe {
             gl::UseProgram(self.program_id);
@@ -129,13 +97,24 @@ impl From<ShaderType> for GLenum {
     }
 }
 
-unsafe fn compile_shader(shader_type: ShaderType, src: &str) -> Result<u32, ShaderCompilationError> {
-    //
-    let src_cstr = CString::new(src).unwrap();
-    let src_ptr = src_cstr.as_ptr();
+unsafe fn compile_shader(shader_type: ShaderType, src: &str, includes: &[&str]) -> Result<u32, ShaderCompilationError> {
     let shader_id = gl::CreateShader(shader_type.into());
 
-    gl::ShaderSource(shader_id, 1, ptr::addr_of!(src_ptr), ptr::null());
+    let mut sources = Vec::with_capacity(includes.len() + 1);
+    let mut pointers = Vec::with_capacity(includes.len() + 1);
+
+    for inc in includes {
+        sources.push(CString::new(*inc).unwrap());
+    }
+
+    let src_cstr = CString::new(src).unwrap();
+    sources.push(src_cstr);
+
+    for c_str in &sources {
+        pointers.push(c_str.as_ptr());
+    }
+
+    gl::ShaderSource(shader_id, sources.len() as i32, pointers.as_ptr(), ptr::null());
     gl::CompileShader(shader_id);
 
     let mut success = 0;
@@ -161,4 +140,58 @@ pub enum ShaderCompilationError {
     ProgramError(ShaderType, String),
     #[error("Shader linking error: \n{0}")]
     LinkageError(String),
+}
+
+pub struct ShaderBuilder<'a> {
+    vert: &'a str,
+    frag: &'a str,
+    includes: Vec<&'a str>,
+}
+
+impl<'a> ShaderBuilder<'a> {
+    pub fn new(vert: &'a str, frag: &'a str) -> Self {
+        Self {
+            vert,
+            frag,
+            includes: vec![SHADER_VERSION],
+        }
+    }
+
+    pub fn with_common_code(&mut self, include: &'a str) -> &mut Self {
+        self.includes.push(include);
+        self
+    }
+
+    pub fn build(&self) -> Result<Shader, ShaderCompilationError> {
+        unsafe {
+            let vert_id = compile_shader(ShaderType::Vertex, self.vert, &self.includes)?;
+            let frag_id = compile_shader(ShaderType::Fragment, self.frag, &self.includes)?;
+
+            let mut success = 0;
+            let mut info_log = [0_i8; MAX_ERR_LEN as usize];
+            let mut info_len = 0;
+
+            let program_id = gl::CreateProgram();
+            gl::AttachShader(program_id, vert_id);
+            gl::AttachShader(program_id, frag_id);
+            gl::LinkProgram(program_id);
+            // check for linking errors
+            gl::GetProgramiv(program_id, gl::LINK_STATUS, ptr::addr_of_mut!(success));
+            if success != 1 {
+                gl::GetProgramInfoLog(program_id, MAX_ERR_LEN, ptr::addr_of_mut!(info_len), info_log.as_mut_ptr());
+                let msg = CStr::from_ptr(info_log[0..(info_len as usize + 1)].as_mut_ptr());
+                let msg = snailquote::unescape(&msg.to_string_lossy()).unwrap();
+                let e = ShaderCompilationError::LinkageError(msg);
+                error!("Shader linking error");
+                return Err(e);
+            }
+
+            gl::DeleteShader(vert_id);
+            gl::DeleteShader(frag_id);
+
+            debug!("Shader program {} constructed", program_id);
+
+            Ok(Shader { program_id })
+        }
+    }
 }

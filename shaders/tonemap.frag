@@ -1,5 +1,3 @@
-#version 450
-
 uniform sampler2D hdr_buffer;
 
 layout (location = 0) in vec2 uv;

@@ -11,21 +11,19 @@ impl Effect {
     pub fn new() -> Self {
         Self {
             flare: Flare::new(),
-            ghosts: Vec::new(),
+            ghosts: vec![Ghost::new()],
         }
     }
 
     pub fn draw(&self, shader_lib: &ShaderLib, noise: &Texture2d, main_fb: &Framebuffer, side_fb: &Framebuffer) {
         for ghost in &self.ghosts {
             side_fb.bind();
+            side_fb.clear();
             ghost.draw(&shader_lib.ghost);
         }
 
         main_fb.bind();
-        unsafe {
-            gl::ClearColor(0.0, 0.0, 0.0, 1.0);
-            gl::Clear(gl::COLOR_BUFFER_BIT);
-        }
+        main_fb.clear();
 
         self.flare.draw(&shader_lib.flare, &noise);
     }

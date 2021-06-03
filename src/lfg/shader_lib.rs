@@ -1,4 +1,4 @@
-use crate::gl_wrapper::shader::{Shader, ShaderCompilationError};
+use crate::gl_wrapper::shader::{Shader, ShaderBuilder, ShaderCompilationError};
 
 const COMMON_SHADER: &str = include_str!("../../shaders/common.glsl");
 
@@ -18,9 +18,9 @@ pub struct ShaderLib {
 
 impl ShaderLib {
     pub fn new() -> Result<Self, ShaderCompilationError> {
-        let flare = Shader::from_str(QUAD_VERT, FLARE_FRAG)?;
-        let ghost = Shader::from_str(GHOST_VERT, FLARE_FRAG)?;
-        let tonemap = Shader::from_str(QUAD_VERT, TONEMAP)?;
+        let flare = ShaderBuilder::new(QUAD_VERT, FLARE_FRAG).with_common_code(COMMON_SHADER).build()?;
+        let ghost = ShaderBuilder::new(GHOST_VERT, GHOST_FRAG).with_common_code(COMMON_SHADER).build()?;
+        let tonemap = ShaderBuilder::new(QUAD_VERT, TONEMAP).with_common_code(COMMON_SHADER).build()?;
 
         let lib = Self { flare, ghost, tonemap };
 

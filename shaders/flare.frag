@@ -1,5 +1,3 @@
-#version 450
-
 uniform vec4 color = vec4(0.6, 0.6, 1.0, 1.0);
 uniform float size = 10.0;
 uniform float intensity = 1.0;
@@ -16,25 +14,6 @@ uniform sampler2D noise;
 layout (location = 0) in vec2 uvInterp;
 
 out vec4 FragColor;
-
-#define E 2.71828
-#define PI 3.14159
-
-float gauss(float x, float center, float std_dev) {
-    return pow(E, -(pow(x - center, 2.0) / std_dev));
-}
-
-vec2 euler_to_polar(vec2 euler) {
-    float dist = sqrt( pow(euler.x, 2.0) + pow(euler.y, 2.0) ); // [0.0; 1.0]
-
-    // angle component of polar coordinates
-    float angle = acos(euler.x / dist);
-    if (euler.y < 0.0) {
-        angle = -acos(euler.x / dist);
-    }
-
-    return vec2(dist, angle);
-}
 
 float rays(float distance, float norm_angle) {
     float angle = norm_angle * 2.0 * PI * blades + PI;

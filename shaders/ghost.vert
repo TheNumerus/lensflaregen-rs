@@ -1,5 +1,3 @@
-#version 450
-
 uniform mat4 modelMatrix;
 uniform mat4 rotationMatrix;
 uniform float aspect_ratio;
