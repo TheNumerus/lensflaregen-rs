@@ -16,13 +16,18 @@ use imgui_winit_support::{HiDpiMode, WinitPlatform};
 
 use simple_logger::SimpleLogger;
 
+use rand::prelude::*;
+
 pub mod gl_wrapper;
 pub mod lfg;
 
+use gl_wrapper::texture::{Texture2d, TextureFormat};
 use lfg::{effect::Effect, shader_lib::ShaderLib};
 
 fn main() -> Result<()> {
     SimpleLogger::new().init().unwrap();
+
+    let mut rng = rand::thread_rng();
 
     let (event_loop, context) = create_window();
 
@@ -37,6 +42,13 @@ fn main() -> Result<()> {
     let mut effect = Effect::new();
 
     let mut flare_color = [1.0_f32, 1.0, 1.0, 1.0];
+
+    let mut noise_data = [0.5; 64 * 64 * 4];
+    for val in &mut noise_data {
+        *val = rng.gen();
+    }
+
+    let noise = Texture2d::new(64, 64, &noise_data, TextureFormat::Rgba);
 
     event_loop.run(move |event, _, control_flow| {
         *control_flow = ControlFlow::Wait;
@@ -73,7 +85,7 @@ fn main() -> Result<()> {
                 gl::ClearColor(0.0, 0.0, 0.0, 1.0);
                 gl::Clear(gl::COLOR_BUFFER_BIT);
 
-                effect.draw(&shader_lib);
+                effect.draw(&shader_lib, &noise);
 
                 let now = Instant::now();
                 let delta = now - last_frame;
@@ -92,7 +104,7 @@ fn create_window() -> (EventLoop<()>, glutin::ContextWrapper<PossiblyCurrent, gl
     let window = WindowBuilder::new()
         .with_inner_size(PhysicalSize::new(1280, 720))
         .with_title("Lens Flare Generator");
-    let context = ContextBuilder::new().build_windowed(window, &event_loop).unwrap();
+    let context = ContextBuilder::new().with_srgb(false).build_windowed(window, &event_loop).unwrap();
     let context = unsafe { context.make_current().unwrap() };
     gl::load_with(|s| context.get_proc_address(s) as *const _);
     (event_loop, context)

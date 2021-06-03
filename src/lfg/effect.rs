@@ -1,3 +1,5 @@
+use crate::gl_wrapper::texture::Texture2d;
+
 use super::{flare::Flare, ghost::Ghost, shader_lib::ShaderLib};
 
 pub struct Effect {
@@ -13,8 +15,8 @@ impl Effect {
         }
     }
 
-    pub fn draw(&self, shader_lib: &ShaderLib) {
-        self.flare.draw(&shader_lib.flare);
+    pub fn draw(&self, shader_lib: &ShaderLib, noise: &Texture2d) {
+        self.flare.draw(&shader_lib.flare, &noise);
 
         for ghost in &self.ghosts {
             ghost.draw(&shader_lib.ghost);

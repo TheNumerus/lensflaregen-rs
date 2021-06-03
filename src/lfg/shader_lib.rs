@@ -16,7 +16,7 @@ pub struct ShaderLib {
 impl ShaderLib {
     pub fn new() -> Result<Self, ShaderCompilationError> {
         let flare = Shader::from_str(QUAD_VERT, FLARE_FRAG)?;
-        let ghost = Shader::from_str(GHOST_VERT, GHOST_FRAG)?;
+        let ghost = Shader::from_str(GHOST_VERT, FLARE_FRAG)?;
 
         let lib = Self { flare, ghost };
 

@@ -7,6 +7,6 @@ Port of `lensflaregen` to Rust standalone library
 - [ ] add multiple source files to shader compilation
 - [x] pass mouse position to flare
 - [ ] generate ghost geometry
-- [ ] generate noise texture
+- [x] generate noise texture
 - [ ] create own framebuffer
 - [ ] pass framebuffer texture to shader

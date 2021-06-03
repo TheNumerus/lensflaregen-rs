@@ -68,6 +68,20 @@ impl Shader {
         };
     }
 
+    pub fn set_int_uniform<const N: usize>(&self, name: &str, int_vec: [i32; N]) {
+        unsafe {
+            let loc = self.get_uniform_location(name).unwrap();
+
+            match N {
+                1 => gl::Uniform1i(loc, int_vec[0]),
+                2 => gl::Uniform2i(loc, int_vec[0], int_vec[1]),
+                3 => gl::Uniform3i(loc, int_vec[0], int_vec[1], int_vec[2]),
+                4 => gl::Uniform4i(loc, int_vec[0], int_vec[1], int_vec[2], int_vec[3]),
+                _ => panic!("invalid float vector size passed"),
+            }
+        };
+    }
+
     fn get_uniform_location(&self, name: &str) -> Result<i32, String> {
         let name_cstr = CString::new(name).map_err(|_| "uniform name has zero bytes")?;
         let name_ptr = name_cstr.as_ptr();
