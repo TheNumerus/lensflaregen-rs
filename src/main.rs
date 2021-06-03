@@ -21,7 +21,11 @@ use rand::prelude::*;
 pub mod gl_wrapper;
 pub mod lfg;
 
-use gl_wrapper::texture::{Texture2d, TextureFormat};
+use gl_wrapper::{
+    framebuffer::Framebuffer,
+    geometry,
+    texture::{Texture2d, TextureFormat},
+};
 use lfg::{effect::Effect, shader_lib::ShaderLib};
 
 fn main() -> Result<()> {
@@ -48,7 +52,12 @@ fn main() -> Result<()> {
         *val = rng.gen();
     }
 
+    let main_hdr_buf = Framebuffer::hdr(1280, 720);
+    let side_hdr_buf = Framebuffer::hdr(1280, 720);
+
     let noise = Texture2d::new(64, 64, &noise_data, TextureFormat::Rgba);
+
+    let quad = geometry::quad();
 
     event_loop.run(move |event, _, control_flow| {
         *control_flow = ControlFlow::Wait;
@@ -65,6 +74,8 @@ fn main() -> Result<()> {
                 ..
             } => unsafe {
                 gl::Viewport(0, 0, size.width as i32, size.height as i32);
+                main_hdr_buf.resize(size.width, size.height);
+                side_hdr_buf.resize(size.width, size.height);
             },
             Event::WindowEvent {
                 event: WindowEvent::ScaleFactorChanged { new_inner_size, .. },
@@ -82,14 +93,22 @@ fn main() -> Result<()> {
                 effect.flare.set_color(&flare_color);
             }
             Event::RedrawRequested(_) => unsafe {
-                gl::ClearColor(0.0, 0.0, 0.0, 1.0);
-                gl::Clear(gl::COLOR_BUFFER_BIT);
-
-                effect.draw(&shader_lib, &noise);
-
                 let now = Instant::now();
                 let delta = now - last_frame;
                 last_frame = now;
+
+                gl::ClearColor(0.0, 0.0, 0.0, 1.0);
+                gl::Clear(gl::COLOR_BUFFER_BIT);
+
+                effect.draw(&shader_lib, &noise, &main_hdr_buf, &side_hdr_buf);
+
+                gl::BindFramebuffer(gl::FRAMEBUFFER, 0);
+                main_hdr_buf.bind_as_color_texture(0);
+                shader_lib.tonemap.bind();
+                shader_lib.tonemap.set_int_uniform("hdr_buffer", [0]);
+
+                quad.draw();
+
                 imgui_draw(&mut imgui, &platform, &context, delta, &renderer, &mut flare_color);
                 context.swap_buffers().unwrap();
                 context.window().request_redraw();
