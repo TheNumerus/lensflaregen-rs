@@ -59,6 +59,7 @@ impl Framebuffer {
 
     pub fn resize(&self, width: u32, height: u32) {
         unsafe {
+            gl::BindTexture(gl::TEXTURE_2D, self.color_buf);
             gl::TexImage2D(
                 gl::TEXTURE_2D,
                 0,
@@ -70,6 +71,7 @@ impl Framebuffer {
                 gl::FLOAT,
                 ptr::null(),
             );
+            gl::BindTexture(gl::TEXTURE_2D, 0);
         }
     }
 

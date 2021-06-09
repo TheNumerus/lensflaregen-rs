@@ -50,6 +50,19 @@ impl Shader {
         };
     }
 
+    pub fn set_matrix_uniform<const N: usize>(&self, name: &str, matrix_vec: [f32; N]) {
+        unsafe {
+            let loc = self.get_uniform_location(name).unwrap();
+
+            match N {
+                4 => gl::UniformMatrix2fv(loc, 1, false as u8, matrix_vec.as_ptr()),
+                9 => gl::UniformMatrix3fv(loc, 1, false as u8, matrix_vec.as_ptr()),
+                16 => gl::UniformMatrix4fv(loc, 1, false as u8, matrix_vec.as_ptr()),
+                _ => panic!("invalid matrix size passed"),
+            }
+        };
+    }
+
     fn get_uniform_location(&self, name: &str) -> Result<i32, String> {
         let name_cstr = CString::new(name).map_err(|_| "uniform name has zero bytes")?;
         let name_ptr = name_cstr.as_ptr();

@@ -1,7 +1,7 @@
 uniform mat4 modelMatrix;
 uniform mat4 rotationMatrix;
-uniform float aspect_ratio;
-uniform float ratio;
+uniform float aspect_ratio = 1.7;
+uniform float ratio = 1.0;
 
 layout (location = 0) in vec2 position;
 layout (location = 1) in vec4 vertColor;

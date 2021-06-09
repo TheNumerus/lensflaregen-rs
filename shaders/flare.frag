@@ -3,12 +3,12 @@ uniform float size = 10.0;
 uniform float intensity = 1.0;
 uniform vec2 flare_position = vec2(0.5, 0.5);
 uniform float aspect_ratio = 1.7;
-uniform float blades = 6.0;
+uniform float blades = 12.0;
 uniform float ray_intensity = 1.0;
 uniform float rotation;
 uniform float master_intensity = 1.0;
-uniform float anamorphic = 1.0;
-uniform vec2 res = vec2(1280.0, 720.0);
+uniform float anamorphic = 0.0;
+uniform vec2 res = vec2(1280.0 / 64.0, 720.0 / 64.0);
 uniform sampler2D noise;
 
 layout (location = 0) in vec2 uvInterp;

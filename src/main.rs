@@ -1,10 +1,13 @@
-use std::time::{Duration, Instant};
+use std::{
+    thread,
+    time::{Duration, Instant},
+};
 
 use anyhow::{Context as _, Result};
 
 use glutin::{
     dpi::PhysicalSize,
-    event::{Event, WindowEvent},
+    event::{ElementState, Event, KeyboardInput, WindowEvent},
     event_loop::{ControlFlow, EventLoop},
     window::WindowBuilder,
     ContextBuilder, PossiblyCurrent, WindowedContext,
@@ -27,6 +30,10 @@ use gl_wrapper::{
     texture::{Texture2d, TextureFormat},
 };
 use lfg::{effect::Effect, shader_lib::ShaderLib};
+
+/// run at 60 fps
+const TARGET_FPS: u64 = 60;
+const TARGET_MICROS: u64 = 1_000_000 / TARGET_FPS;
 
 fn main() -> Result<()> {
     SimpleLogger::new().init().unwrap();
@@ -59,8 +66,12 @@ fn main() -> Result<()> {
 
     let quad = geometry::quad();
 
+    let mut cap = true;
+
+    let mut state = WindowState::default();
+
     event_loop.run(move |event, _, control_flow| {
-        *control_flow = ControlFlow::Wait;
+        *control_flow = ControlFlow::Poll;
 
         platform.handle_event(imgui.io_mut(), context.window(), &event);
 
@@ -76,6 +87,7 @@ fn main() -> Result<()> {
                 gl::Viewport(0, 0, size.width as i32, size.height as i32);
                 main_hdr_buf.resize(size.width, size.height);
                 side_hdr_buf.resize(size.width, size.height);
+                state.size = (size.width, size.height);
             },
             Event::WindowEvent {
                 event: WindowEvent::ScaleFactorChanged { new_inner_size, .. },
@@ -87,31 +99,55 @@ fn main() -> Result<()> {
                 event: WindowEvent::CursorMoved { position, .. },
                 ..
             } => {
-                let size = context.window().inner_size();
-                let (pos_x, pos_y) = (position.x / size.width as f64, 1.0 - position.y / size.height as f64);
-                effect.flare.set_position(pos_x as f32, pos_y as f32);
-                effect.flare.set_color(&flare_color);
+                state.cursor = (position.x as u32, position.y as u32);
+            }
+            Event::WindowEvent {
+                event:
+                    WindowEvent::KeyboardInput {
+                        input:
+                            KeyboardInput {
+                                virtual_keycode: Some(glutin::event::VirtualKeyCode::Space),
+                                state: ElementState::Pressed,
+                                ..
+                            },
+                        ..
+                    },
+                ..
+            } => {
+                cap = !cap;
             }
             Event::RedrawRequested(_) => unsafe {
                 let now = Instant::now();
                 let delta = now - last_frame;
                 last_frame = now;
 
+                gl::BindFramebuffer(gl::FRAMEBUFFER, 0);
                 gl::ClearColor(0.0, 0.0, 0.0, 1.0);
                 gl::Clear(gl::COLOR_BUFFER_BIT);
+                gl::Enable(gl::BLEND);
+                gl::BlendFunc(gl::SRC_ALPHA, gl::ONE);
 
-                effect.draw(&shader_lib, &noise, &main_hdr_buf, &side_hdr_buf);
+                effect.flare.set_color(&flare_color);
+                effect.draw(&shader_lib, &noise, &main_hdr_buf, &side_hdr_buf, &quad, &state);
 
                 gl::BindFramebuffer(gl::FRAMEBUFFER, 0);
-                main_hdr_buf.bind_as_color_texture(0);
                 shader_lib.tonemap.bind();
-                shader_lib.tonemap.set_int_uniform("hdr_buffer", [0]);
+                main_hdr_buf.bind_as_color_texture(0);
 
                 quad.draw();
+
+                gl::BlendFunc(gl::SRC_ALPHA, gl::ONE);
 
                 imgui_draw(&mut imgui, &platform, &context, delta, &renderer, &mut flare_color);
                 context.swap_buffers().unwrap();
                 context.window().request_redraw();
+
+                if cap {
+                    let frame_delta = Instant::now() - now;
+                    if (frame_delta.as_micros() as u64) < TARGET_MICROS {
+                        thread::sleep(Duration::from_micros(TARGET_MICROS) - frame_delta);
+                    }
+                }
             },
             _ => (),
         }
@@ -154,4 +190,16 @@ fn imgui_draw(
         });
 
     renderer.render(ui);
+}
+
+#[derive(Debug, Default)]
+pub struct WindowState {
+    size: (u32, u32),
+    cursor: (u32, u32),
+}
+
+impl WindowState {
+    fn relative_cursor(&self) -> (f32, f32) {
+        (self.cursor.0 as f32 / self.size.0 as f32, 1.0 - self.cursor.1 as f32 / self.size.1 as f32)
+    }
 }

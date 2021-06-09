@@ -75,12 +75,12 @@ pub trait TexStorage {
 
 impl TexStorage for f32 {
     fn gl_type() -> gl::types::GLenum {
-        return gl::FLOAT;
+        gl::FLOAT
     }
 }
 
 impl TexStorage for u8 {
     fn gl_type() -> gl::types::GLenum {
-        return gl::UNSIGNED_BYTE;
+        gl::UNSIGNED_BYTE
     }
 }

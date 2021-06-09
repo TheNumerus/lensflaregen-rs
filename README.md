@@ -11,3 +11,4 @@ Port of `lensflaregen` to Rust standalone library
 - [x] create own framebuffer
 - [x] pass framebuffer texture to shader
 - [ ] dispersion rendering
+- [ ] texture parameters

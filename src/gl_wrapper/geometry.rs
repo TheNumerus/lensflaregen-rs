@@ -1,6 +1,7 @@
 use std::ptr;
 
 use gl::types::GLenum;
+use log::debug;
 
 pub struct Geometry {
     mode: GeometryType,
@@ -86,6 +87,8 @@ impl GeometryBuilder {
 
             gl::BindBuffer(gl::ARRAY_BUFFER, 0);
             gl::BindVertexArray(0);
+
+            debug!("Geometry {} generated", vao);
 
             Geometry {
                 vao,
