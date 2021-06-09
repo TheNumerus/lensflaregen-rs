@@ -5,6 +5,7 @@ use log::{debug, error};
 pub struct Framebuffer {
     fb_id: u32,
     color_buf: u32,
+    bound: bool,
 }
 
 impl Framebuffer {
@@ -40,13 +41,11 @@ impl Framebuffer {
             gl::BindFramebuffer(gl::FRAMEBUFFER, 0);
 
             debug!("Framebuffer {} generated", fb_id);
-            Self { fb_id, color_buf }
-        }
-    }
-
-    pub fn bind(&self) {
-        unsafe {
-            gl::BindFramebuffer(gl::FRAMEBUFFER, self.fb_id);
+            Self {
+                fb_id,
+                color_buf,
+                bound: false,
+            }
         }
     }
 
@@ -76,9 +75,26 @@ impl Framebuffer {
     }
 
     pub fn clear(&self) {
+        if self.bound {
+            unsafe {
+                gl::ClearColor(0.0, 0.0, 0.0, 1.0);
+                gl::Clear(gl::COLOR_BUFFER_BIT);
+            }
+        }
+    }
+
+    pub fn draw_with<F: Fn(&Self)>(&mut self, draw: F) {
         unsafe {
-            gl::ClearColor(0.0, 0.0, 0.0, 1.0);
-            gl::Clear(gl::COLOR_BUFFER_BIT);
+            gl::BindFramebuffer(gl::FRAMEBUFFER, self.fb_id);
+        }
+        self.bound = true;
+
+        draw(self);
+
+        self.bound = false;
+
+        unsafe {
+            gl::BindFramebuffer(gl::FRAMEBUFFER, 0);
         }
     }
 }

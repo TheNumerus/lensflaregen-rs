@@ -1,8 +1,5 @@
-use std::rc::Rc;
-
 use crate::{
     gl_wrapper::{framebuffer::Framebuffer, geometry::Geometry, texture::Texture2d},
-    lfg::ghost::gen_ghost_geo,
     WindowState,
 };
 
@@ -11,49 +8,87 @@ use super::{flare::Flare, ghost::Ghost, shader_lib::ShaderLib};
 pub struct Effect {
     pub flare: Flare,
     pub ghosts: Vec<Ghost>,
+    pub rotation: f32,
+    pub blades: u8,
 }
 
 impl Effect {
     pub fn new() -> Self {
-        let ghost_geo = Rc::new(gen_ghost_geo(6));
-
         Self {
             flare: Flare::new(),
-            ghosts: vec![Ghost::new(ghost_geo.clone()), Ghost::new(ghost_geo)],
+            ghosts: vec![
+                Ghost { ..Default::default() },
+                Ghost {
+                    offset: 0.2,
+                    size: 5.0,
+                    color: [1.0, 0.5, 0.5, 1.0],
+                    ..Default::default()
+                },
+                Ghost {
+                    offset: -0.8,
+                    size: 20.0,
+                    ..Default::default()
+                },
+                Ghost {
+                    offset: -0.4,
+                    size: 15.0,
+                    ..Default::default()
+                },
+            ],
+            rotation: 0.2,
+            blades: 8,
         }
     }
 
-    pub fn draw(&self, shader_lib: &ShaderLib, noise: &Texture2d, main_fb: &Framebuffer, side_fb: &Framebuffer, quad: &Geometry, state: &WindowState) {
-        main_fb.bind();
-        main_fb.clear();
+    pub fn draw(
+        &self,
+        shader_lib: &ShaderLib,
+        noise: &Texture2d,
+        main_fb: &mut Framebuffer,
+        side_fb: &mut Framebuffer,
+        quad: &Geometry,
+        ghost_geo: &Geometry,
+        state: &WindowState,
+        spectrum: &Texture2d,
+    ) {
+        // clear main frame
+        main_fb.draw_with(|fb| fb.clear());
+
         for ghost in &self.ghosts {
-            side_fb.bind();
-            side_fb.clear();
+            // render ghost geometry
+            side_fb.draw_with(|fb| {
+                fb.clear();
 
-            shader_lib.ghost.bind();
-            shader_lib.ghost.set_float_uniform("aspect_ratio", [state.size.0 as f32 / state.size.1 as f32]);
-            ghost.draw(&shader_lib.ghost);
+                shader_lib.ghost.bind();
+                shader_lib.ghost.set_float_uniform("aspect_ratio", [state.size.0 as f32 / state.size.1 as f32]);
+                ghost.draw(&shader_lib.ghost, state.relative_cursor(), ghost_geo, self);
+            });
 
-            main_fb.bind();
-            shader_lib.dispersion.bind();
-            shader_lib
-                .dispersion
-                .set_float_uniform("res", [state.size.0 as f32 / 64.0, state.size.1 as f32 / 64.0]);
-            side_fb.bind_as_color_texture(0);
-            side_fb.bind_as_color_texture(1);
-            noise.bind(2);
+            // copy distorted ghost geometry
+            main_fb.draw_with(|_fb| {
+                shader_lib.dispersion.bind();
+                shader_lib
+                    .dispersion
+                    .set_float_uniform("res", [state.size.0 as f32 / 64.0, state.size.1 as f32 / 64.0]);
+                side_fb.bind_as_color_texture(0);
+                spectrum.bind(1);
+                noise.bind(2);
 
-            quad.draw()
+                ghost.draw_dispersed(&shader_lib.dispersion, &quad);
+            });
         }
 
-        main_fb.bind();
-        shader_lib.flare.bind();
-        shader_lib
-            .flare
-            .set_float_uniform("res", [state.size.0 as f32 / 64.0, state.size.1 as f32 / 64.0]);
-        let relative_pos = state.relative_cursor();
-        shader_lib.flare.set_float_uniform("flare_position", [relative_pos.0, relative_pos.1]);
-        shader_lib.flare.set_float_uniform("aspect_ratio", [state.size.0 as f32 / state.size.1 as f32]);
-        self.flare.draw(&shader_lib.flare, &noise);
+        // render flare on top
+        main_fb.draw_with(|_fb| {
+            shader_lib.flare.bind();
+            shader_lib
+                .flare
+                .set_float_uniform("res", [state.size.0 as f32 / 64.0, state.size.1 as f32 / 64.0]);
+            let relative_pos = state.relative_cursor();
+            shader_lib.flare.set_float_uniform("flare_position", [relative_pos.0, relative_pos.1]);
+            shader_lib.flare.set_float_uniform("aspect_ratio", [state.size.0 as f32 / state.size.1 as f32]);
+            shader_lib.flare.set_float_uniform("blades", [self.blades as f32]);
+            self.flare.draw(&shader_lib.flare, &noise);
+        });
     }
 }

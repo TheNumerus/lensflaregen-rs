@@ -29,11 +29,13 @@ use gl_wrapper::{
     geometry,
     texture::{Texture2d, TextureFormat},
 };
-use lfg::{effect::Effect, shader_lib::ShaderLib};
+use lfg::{effect::Effect, ghost, shader_lib::ShaderLib};
 
 /// run at 60 fps
 const TARGET_FPS: u64 = 60;
 const TARGET_MICROS: u64 = 1_000_000 / TARGET_FPS;
+
+const SPECTRUM_BYTES: &[u8] = include_bytes!("../images/spectral.png");
 
 fn main() -> Result<()> {
     SimpleLogger::new().init().unwrap();
@@ -59,16 +61,22 @@ fn main() -> Result<()> {
         *val = rng.gen();
     }
 
-    let main_hdr_buf = Framebuffer::hdr(1280, 720);
-    let side_hdr_buf = Framebuffer::hdr(1280, 720);
+    let mut main_hdr_buf = Framebuffer::hdr(1280, 720);
+    let mut side_hdr_buf = Framebuffer::hdr(1280, 720);
 
     let noise = Texture2d::new(64, 64, &noise_data, TextureFormat::Rgba);
 
     let quad = geometry::quad();
+    let ghost_geo = ghost::gen_ghost_geo(8);
 
     let mut cap = true;
 
     let mut state = WindowState::default();
+
+    let spectrum_img = image::load_from_memory(SPECTRUM_BYTES)?;
+    let spectrum = spectrum_img.as_rgba8().unwrap();
+
+    let spectrum_texture = Texture2d::new(spectrum.width(), spectrum.height(), spectrum.as_flat_samples().samples, TextureFormat::Rgba);
 
     event_loop.run(move |event, _, control_flow| {
         *control_flow = ControlFlow::Poll;
@@ -128,7 +136,16 @@ fn main() -> Result<()> {
                 gl::BlendFunc(gl::SRC_ALPHA, gl::ONE);
 
                 effect.flare.set_color(&flare_color);
-                effect.draw(&shader_lib, &noise, &main_hdr_buf, &side_hdr_buf, &quad, &state);
+                effect.draw(
+                    &shader_lib,
+                    &noise,
+                    &mut main_hdr_buf,
+                    &mut side_hdr_buf,
+                    &quad,
+                    &ghost_geo,
+                    &state,
+                    &spectrum_texture,
+                );
 
                 gl::BindFramebuffer(gl::FRAMEBUFFER, 0);
                 shader_lib.tonemap.bind();

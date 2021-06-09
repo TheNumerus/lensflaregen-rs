@@ -11,7 +11,7 @@ impl Texture2d {
     pub fn new<S: TexStorage>(width: u32, height: u32, data: &[S], format: TextureFormat) -> Self {
         let expected_len = match format {
             TextureFormat::Rgb => width * height * 3,
-            TextureFormat::Rgba => width * height * 4,
+            TextureFormat::Rgba | TextureFormat::Srgba => width * height * 4,
         };
         assert_eq!(data.len(), expected_len as usize);
 
@@ -21,7 +21,12 @@ impl Texture2d {
 
             gl::BindTexture(gl::TEXTURE_2D, tex_id);
 
-            gl::TexStorage2D(gl::TEXTURE_2D, 1, gl::RGBA8, width as i32, height as i32);
+            let int_format = match format {
+                TextureFormat::Rgb | TextureFormat::Rgba => gl::RGBA8,
+                TextureFormat::Srgba => gl::SRGB_ALPHA,
+            };
+
+            gl::TexStorage2D(gl::TEXTURE_2D, 1, int_format, width as i32, height as i32);
 
             gl::TexSubImage2D(
                 gl::TEXTURE_2D,
@@ -58,13 +63,14 @@ impl Drop for Texture2d {
 pub enum TextureFormat {
     Rgb,
     Rgba,
+    Srgba,
 }
 
 impl From<TextureFormat> for GLenum {
     fn from(tf: TextureFormat) -> Self {
         match tf {
             TextureFormat::Rgb => gl::RGB,
-            TextureFormat::Rgba => gl::RGBA,
+            TextureFormat::Rgba | TextureFormat::Srgba => gl::RGBA,
         }
     }
 }

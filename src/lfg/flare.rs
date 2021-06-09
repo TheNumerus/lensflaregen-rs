@@ -23,7 +23,6 @@ impl Flare {
 
     pub fn draw(&self, shader: &Shader, noise: &Texture2d) {
         shader.bind();
-        //shader.set_float_uniform("flare_position", [self.pos_x, self.pos_y]);
         shader.set_float_uniform("color", self.color);
         noise.bind(0);
         self.geometry.draw();
