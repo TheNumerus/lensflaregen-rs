@@ -10,12 +10,8 @@ use glutin::{
     event::{ElementState, Event, KeyboardInput, WindowEvent},
     event_loop::{ControlFlow, EventLoop},
     window::WindowBuilder,
-    ContextBuilder, PossiblyCurrent, WindowedContext,
+    ContextBuilder, PossiblyCurrent,
 };
-
-use imgui::*;
-use imgui_opengl_renderer::Renderer;
-use imgui_winit_support::{HiDpiMode, WinitPlatform};
 
 use simple_logger::SimpleLogger;
 
@@ -23,13 +19,15 @@ use rand::prelude::*;
 
 pub mod gl_wrapper;
 pub mod lfg;
+pub mod ui;
 
 use gl_wrapper::{
-    framebuffer::Framebuffer,
+    framebuffer::{Blend, Framebuffer},
     geometry,
     texture::{Texture2d, TextureFormat},
 };
 use lfg::{effect::Effect, ghost, shader_lib::ShaderLib};
+use ui::ImguiUi;
 
 /// run at 60 fps
 const TARGET_FPS: u64 = 60;
@@ -40,14 +38,9 @@ const SPECTRUM_BYTES: &[u8] = include_bytes!("../images/spectral.png");
 fn main() -> Result<()> {
     SimpleLogger::new().init().unwrap();
 
-    let mut rng = rand::thread_rng();
-
     let (event_loop, context) = create_window();
 
-    let mut imgui = Context::create();
-    let mut platform = WinitPlatform::init(&mut imgui);
-    let renderer = imgui_opengl_renderer::Renderer::new(&mut imgui, |s| context.get_proc_address(s) as *const _);
-    platform.attach_window(imgui.io_mut(), context.window(), HiDpiMode::Locked(1.0));
+    let mut ui = ImguiUi::init(&context);
 
     let mut last_frame = Instant::now();
 
@@ -56,15 +49,8 @@ fn main() -> Result<()> {
 
     let mut flare_color = [1.0_f32, 1.0, 1.0, 1.0];
 
-    let mut noise_data = [0.5; 64 * 64 * 4];
-    for val in &mut noise_data {
-        *val = rng.gen();
-    }
-
     let mut main_hdr_buf = Framebuffer::hdr(1280, 720);
     let mut side_hdr_buf = Framebuffer::hdr(1280, 720);
-
-    let noise = Texture2d::new(64, 64, &noise_data, TextureFormat::Rgba);
 
     let quad = geometry::quad();
     let ghost_geo = ghost::gen_ghost_geo(8);
@@ -73,67 +59,51 @@ fn main() -> Result<()> {
 
     let mut state = WindowState::default();
 
-    let spectrum_img = image::load_from_memory(SPECTRUM_BYTES)?;
-    let spectrum = spectrum_img.as_rgba8().unwrap();
-
-    let spectrum_texture = Texture2d::new(spectrum.width(), spectrum.height(), spectrum.as_flat_samples().samples, TextureFormat::Rgba);
+    let noise = generate_noise_texture();
+    let spectrum_texture = generate_spectrum_texture()?;
 
     event_loop.run(move |event, _, control_flow| {
         *control_flow = ControlFlow::Poll;
 
-        platform.handle_event(imgui.io_mut(), context.window(), &event);
+        ui.handle_events(&context, &event);
 
         match event {
-            Event::WindowEvent {
-                event: WindowEvent::CloseRequested,
-                ..
-            } => *control_flow = ControlFlow::Exit,
-            Event::WindowEvent {
-                event: WindowEvent::Resized(size),
-                ..
-            } => unsafe {
-                gl::Viewport(0, 0, size.width as i32, size.height as i32);
-                main_hdr_buf.resize(size.width, size.height);
-                side_hdr_buf.resize(size.width, size.height);
-                state.size = (size.width, size.height);
+            Event::WindowEvent { event, .. } => match event {
+                WindowEvent::CloseRequested => *control_flow = ControlFlow::Exit,
+                WindowEvent::Resized(size) => unsafe {
+                    gl::Viewport(0, 0, size.width as i32, size.height as i32);
+                    main_hdr_buf.resize(size.width, size.height);
+                    side_hdr_buf.resize(size.width, size.height);
+                    state.size = (size.width, size.height);
+                },
+                WindowEvent::ScaleFactorChanged { new_inner_size, .. } => {
+                    *new_inner_size = context.window().inner_size();
+                }
+                WindowEvent::CursorMoved { position, .. } => {
+                    state.cursor = (position.x as u32, position.y as u32);
+                }
+                WindowEvent::KeyboardInput {
+                    input:
+                        KeyboardInput {
+                            state: ElementState::Pressed,
+                            virtual_keycode: Some(glutin::event::VirtualKeyCode::Space),
+                            ..
+                        },
+                    ..
+                } => {
+                    cap = !cap;
+                }
+                _ => {}
             },
-            Event::WindowEvent {
-                event: WindowEvent::ScaleFactorChanged { new_inner_size, .. },
-                ..
-            } => {
-                *new_inner_size = context.window().inner_size();
-            }
-            Event::WindowEvent {
-                event: WindowEvent::CursorMoved { position, .. },
-                ..
-            } => {
-                state.cursor = (position.x as u32, position.y as u32);
-            }
-            Event::WindowEvent {
-                event:
-                    WindowEvent::KeyboardInput {
-                        input:
-                            KeyboardInput {
-                                virtual_keycode: Some(glutin::event::VirtualKeyCode::Space),
-                                state: ElementState::Pressed,
-                                ..
-                            },
-                        ..
-                    },
-                ..
-            } => {
-                cap = !cap;
-            }
-            Event::RedrawRequested(_) => unsafe {
+            Event::RedrawRequested(_) => {
                 let now = Instant::now();
                 let delta = now - last_frame;
                 last_frame = now;
 
-                gl::BindFramebuffer(gl::FRAMEBUFFER, 0);
-                gl::ClearColor(0.0, 0.0, 0.0, 1.0);
-                gl::Clear(gl::COLOR_BUFFER_BIT);
-                gl::Enable(gl::BLEND);
-                gl::BlendFunc(gl::SRC_ALPHA, gl::ONE);
+                Framebuffer::draw_with_default(|fb| {
+                    fb.clear();
+                    fb.blend(Blend::Enable(gl::SRC_ALPHA, gl::ONE));
+                });
 
                 effect.flare.set_color(&flare_color);
                 effect.draw(
@@ -147,15 +117,15 @@ fn main() -> Result<()> {
                     &spectrum_texture,
                 );
 
-                gl::BindFramebuffer(gl::FRAMEBUFFER, 0);
-                shader_lib.tonemap.bind();
-                main_hdr_buf.bind_as_color_texture(0);
+                Framebuffer::draw_with_default(|_fb| {
+                    shader_lib.tonemap.bind();
+                    main_hdr_buf.bind_as_color_texture(0);
 
-                quad.draw();
+                    quad.draw();
+                });
 
-                gl::BlendFunc(gl::SRC_ALPHA, gl::ONE);
+                ui.frame(&context, delta, &mut flare_color);
 
-                imgui_draw(&mut imgui, &platform, &context, delta, &renderer, &mut flare_color);
                 context.swap_buffers().unwrap();
                 context.window().request_redraw();
 
@@ -165,7 +135,7 @@ fn main() -> Result<()> {
                         thread::sleep(Duration::from_micros(TARGET_MICROS) - frame_delta);
                     }
                 }
-            },
+            }
             _ => (),
         }
     });
@@ -182,31 +152,25 @@ fn create_window() -> (EventLoop<()>, glutin::ContextWrapper<PossiblyCurrent, gl
     (event_loop, context)
 }
 
-fn imgui_draw(
-    imgui: &mut Context,
-    platform: &WinitPlatform,
-    windowed_context: &WindowedContext<PossiblyCurrent>,
-    delta: Duration,
-    renderer: &Renderer,
-    color: &mut [f32; 4],
-) {
-    let io = imgui.io_mut();
-    platform.prepare_frame(io, windowed_context.window()).expect("Failed to start frame");
+fn generate_noise_texture() -> Texture2d {
+    let mut rng = rand::thread_rng();
+    let mut noise_data = [0.5; 64 * 64 * 4];
+    for val in &mut noise_data {
+        *val = rng.gen();
+    }
+    Texture2d::new(64, 64, &noise_data, TextureFormat::Rgba)
+}
 
-    io.update_delta_time(delta);
+fn generate_spectrum_texture() -> Result<Texture2d> {
+    let spectrum_img = image::load_from_memory(SPECTRUM_BYTES)?;
+    let spectrum = spectrum_img.as_rgba8().unwrap();
 
-    let ui = imgui.frame();
-
-    let color = imgui::EditableColor::Float4(color);
-
-    imgui::Window::new(im_str!("FPS counter"))
-        .size([300.0, 110.0], Condition::FirstUseEver)
-        .build(&ui, || {
-            ui.text(format!("FPS: {}", ui.io().framerate));
-            imgui::ColorEdit::new(im_str!("Flare Color"), color).build(&ui);
-        });
-
-    renderer.render(ui);
+    Ok(Texture2d::new(
+        spectrum.width(),
+        spectrum.height(),
+        spectrum.as_flat_samples().samples,
+        TextureFormat::Srgba,
+    ))
 }
 
 #[derive(Debug, Default)]

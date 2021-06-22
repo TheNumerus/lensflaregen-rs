@@ -83,6 +83,18 @@ impl Framebuffer {
         }
     }
 
+    pub fn blend(&self, blend: Blend) {
+        unsafe {
+            match blend {
+                Blend::Enable(src, dst) => {
+                    gl::Enable(gl::BLEND);
+                    gl::BlendFunc(src, dst);
+                }
+                Blend::Disable => gl::Disable(gl::BLEND),
+            }
+        }
+    }
+
     pub fn draw_with<F: Fn(&Self)>(&mut self, draw: F) {
         unsafe {
             gl::BindFramebuffer(gl::FRAMEBUFFER, self.fb_id);
@@ -93,6 +105,24 @@ impl Framebuffer {
 
         self.bound = false;
 
+        Self::bind_default();
+    }
+
+    pub fn draw_with_default<F: Fn(&Self)>(draw: F) {
+        Self::bind_default();
+        let dummy_fb = Self {
+            bound: true,
+            color_buf: 0,
+            fb_id: 0,
+        };
+        draw(&dummy_fb);
+
+        // don't run drop on dummy
+        // gl::DeleteTextures and gl::DeleteFramebuffers should ignore zeroes, but without forget, this segfaults
+        std::mem::forget(dummy_fb);
+    }
+
+    pub fn bind_default() {
         unsafe {
             gl::BindFramebuffer(gl::FRAMEBUFFER, 0);
         }
@@ -106,4 +136,10 @@ impl Drop for Framebuffer {
             gl::DeleteTextures(1, self.color_buf as *const _);
         }
     }
+}
+
+// TODO remove GLenum
+pub enum Blend {
+    Enable(gl::types::GLenum, gl::types::GLenum),
+    Disable,
 }
