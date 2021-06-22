@@ -35,7 +35,6 @@ impl Ghost {
     }
 
     pub fn draw(&self, shader: &Shader, flare_pos: (f32, f32), geo: &Geometry, effect: &Effect) {
-        shader.bind();
         shader.set_float_uniform("color", self.color);
         shader.set_float_uniform("empty", [self.center_transparency]);
         shader.set_float_uniform("ratio", [self.aspect_ratio]);
@@ -56,7 +55,6 @@ impl Ghost {
     }
 
     pub fn draw_dispersed(&self, shader: &Shader, quad: &Geometry) {
-        shader.bind();
         shader.set_float_uniform("intensity", [self.intensity]);
         shader.set_float_uniform("dispersion", [self.dispersion]);
         shader.set_float_uniform("distortion", [self.distortion]);

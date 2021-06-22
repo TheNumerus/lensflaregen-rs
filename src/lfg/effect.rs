@@ -88,7 +88,8 @@ impl Effect {
             shader_lib.flare.set_float_uniform("flare_position", [relative_pos.0, relative_pos.1]);
             shader_lib.flare.set_float_uniform("aspect_ratio", [state.size.0 as f32 / state.size.1 as f32]);
             shader_lib.flare.set_float_uniform("blades", [self.blades as f32]);
-            self.flare.draw(&shader_lib.flare, &noise);
+            noise.bind(0);
+            self.flare.draw(&shader_lib.flare, &quad);
         });
     }
 }
