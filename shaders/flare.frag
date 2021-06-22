@@ -20,7 +20,7 @@ float rays(float distance, float norm_angle) {
     float distance_limit = max(1.0 - distance, 0.0);
     float ray_centers = pow(max(cos(angle), 0.0), 8.0) * distance_limit;
 
-    return ray_centers;
+    return pow(ray_centers, 2.0);
 }
 
 float radial_noise(float dist, float angle) {
@@ -53,7 +53,7 @@ void main() {
     float noise_ring_intensity = gauss(dist * noise_ring_extrusion / (size / 10.0), 0.21, 0.01);
     float noise_ring = rad_noise * noise_ring_intensity;
 
-    float dither_noise = (texture(noise, uvInterp * res).r - 0.5) * 0.005;
+    float dither_noise = (texture(noise, uvInterp * res).r - 0.5) * 0.001;
 
     if (anamorphic > 0.5) {
         float anam_ring = (noise_ring) * 0.2;
