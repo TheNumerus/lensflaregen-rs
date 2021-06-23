@@ -1,6 +1,6 @@
 layout(binding=0) uniform sampler2D ghost;
-layout(binding=1) uniform sampler2D spectral;
 layout(binding=2) uniform sampler2D noise;
+layout(binding=3) uniform sampler2D spectral;
 uniform float dispersion = 0.4;
 uniform float distortion = 1.0;
 uniform int samples = 8;

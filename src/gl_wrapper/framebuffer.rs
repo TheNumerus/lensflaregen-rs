@@ -1,6 +1,11 @@
-use std::ptr;
+use std::{
+    ptr,
+    sync::atomic::{AtomicU32, Ordering},
+};
 
 use log::{debug, error};
+
+static BOUND_FB: AtomicU32 = AtomicU32::new(0);
 
 pub struct Framebuffer {
     fb_id: u32,
@@ -96,16 +101,17 @@ impl Framebuffer {
     }
 
     pub fn draw_with<F: Fn(&Self)>(&mut self, draw: F) {
-        unsafe {
-            gl::BindFramebuffer(gl::FRAMEBUFFER, self.fb_id);
+        if BOUND_FB.swap(self.fb_id, Ordering::SeqCst) != self.fb_id {
+            unsafe {
+                gl::BindFramebuffer(gl::FRAMEBUFFER, self.fb_id);
+            }
         }
+
         self.bound = true;
 
         draw(self);
 
         self.bound = false;
-
-        Self::bind_default();
     }
 
     pub fn draw_with_default<F: Fn(&Self)>(draw: F) {
@@ -123,8 +129,10 @@ impl Framebuffer {
     }
 
     pub fn bind_default() {
-        unsafe {
-            gl::BindFramebuffer(gl::FRAMEBUFFER, 0);
+        if BOUND_FB.swap(0, Ordering::SeqCst) != 0 {
+            unsafe {
+                gl::BindFramebuffer(gl::FRAMEBUFFER, 0);
+            }
         }
     }
 }

@@ -1,5 +1,5 @@
 use crate::{
-    gl_wrapper::{framebuffer::Framebuffer, geometry::Geometry, texture::Texture2d},
+    gl_wrapper::{framebuffer::Framebuffer, geometry::Geometry},
     WindowState,
 };
 
@@ -43,13 +43,11 @@ impl Effect {
     pub fn draw(
         &self,
         shader_lib: &ShaderLib,
-        noise: &Texture2d,
         main_fb: &mut Framebuffer,
         side_fb: &mut Framebuffer,
         quad: &Geometry,
         ghost_geo: &Geometry,
         state: &WindowState,
-        spectrum: &Texture2d,
     ) {
         // clear main frame
         main_fb.draw_with(|fb| fb.clear());
@@ -71,8 +69,6 @@ impl Effect {
                     .dispersion
                     .set_float_uniform("res", [state.size.0 as f32 / 64.0, state.size.1 as f32 / 64.0]);
                 side_fb.bind_as_color_texture(0);
-                spectrum.bind(1);
-                noise.bind(2);
 
                 ghost.draw_dispersed(&shader_lib.dispersion, &quad);
             });
@@ -88,7 +84,6 @@ impl Effect {
             shader_lib.flare.set_float_uniform("flare_position", [relative_pos.0, relative_pos.1]);
             shader_lib.flare.set_float_uniform("aspect_ratio", [state.size.0 as f32 / state.size.1 as f32]);
             shader_lib.flare.set_float_uniform("blades", [self.blades as f32]);
-            noise.bind(0);
             self.flare.draw(&shader_lib.flare, &quad);
         });
     }

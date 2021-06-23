@@ -9,7 +9,7 @@ uniform float rotation;
 uniform float master_intensity = 1.0;
 uniform float anamorphic = 0.0;
 uniform vec2 res = vec2(1280.0 / 64.0, 720.0 / 64.0);
-uniform sampler2D noise;
+layout (binding = 2) uniform sampler2D noise;
 
 layout (location = 0) in vec2 uvInterp;
 

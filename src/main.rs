@@ -105,17 +105,11 @@ fn main() -> Result<()> {
                     fb.blend(Blend::Enable(gl::SRC_ALPHA, gl::ONE));
                 });
 
+                noise.bind(2);
+                spectrum_texture.bind(3);
+
                 effect.flare.set_color(&flare_color);
-                effect.draw(
-                    &shader_lib,
-                    &noise,
-                    &mut main_hdr_buf,
-                    &mut side_hdr_buf,
-                    &quad,
-                    &ghost_geo,
-                    &state,
-                    &spectrum_texture,
-                );
+                effect.draw(&shader_lib, &mut main_hdr_buf, &mut side_hdr_buf, &quad, &ghost_geo, &state);
 
                 Framebuffer::draw_with_default(|_fb| {
                     shader_lib.tonemap.bind();
@@ -123,6 +117,8 @@ fn main() -> Result<()> {
 
                     quad.draw();
                 });
+
+                Framebuffer::bind_default();
 
                 ui.frame(&context, delta, &mut flare_color);
 
