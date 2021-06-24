@@ -1,6 +1,6 @@
 use crate::{
     gl_wrapper::{framebuffer::Framebuffer, geometry::Geometry},
-    WindowState,
+    window_state::WindowState,
 };
 
 use super::{flare::Flare, ghost::Ghost, shader_lib::ShaderLib};
@@ -10,6 +10,8 @@ pub struct Effect {
     pub ghosts: Vec<Ghost>,
     pub rotation: f32,
     pub blades: u8,
+    pub pos_x: f32,
+    pub pos_y: f32,
 }
 
 impl Effect {
@@ -37,6 +39,8 @@ impl Effect {
             ],
             rotation: 0.2,
             blades: 8,
+            pos_x: 0.5,
+            pos_y: 0.5,
         }
     }
 
@@ -59,7 +63,7 @@ impl Effect {
 
                 shader_lib.ghost.bind();
                 shader_lib.ghost.set_float_uniform("aspect_ratio", [state.size.0 as f32 / state.size.1 as f32]);
-                ghost.draw(&shader_lib.ghost, state.relative_cursor(), ghost_geo, self);
+                ghost.draw(&shader_lib.ghost, (self.pos_x, self.pos_y), ghost_geo, self);
             });
 
             // copy distorted ghost geometry
@@ -80,11 +84,15 @@ impl Effect {
             shader_lib
                 .flare
                 .set_float_uniform("res", [state.size.0 as f32 / 64.0, state.size.1 as f32 / 64.0]);
-            let relative_pos = state.relative_cursor();
-            shader_lib.flare.set_float_uniform("flare_position", [relative_pos.0, relative_pos.1]);
+            shader_lib.flare.set_float_uniform("flare_position", [self.pos_x, self.pos_y]);
             shader_lib.flare.set_float_uniform("aspect_ratio", [state.size.0 as f32 / state.size.1 as f32]);
             shader_lib.flare.set_float_uniform("blades", [self.blades as f32]);
             self.flare.draw(&shader_lib.flare, &quad);
         });
+    }
+
+    pub fn set_position(&mut self, (pos_x, pos_y): (f32, f32)) {
+        self.pos_x = pos_x;
+        self.pos_y = pos_y;
     }
 }

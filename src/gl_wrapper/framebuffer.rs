@@ -88,18 +88,6 @@ impl Framebuffer {
         }
     }
 
-    pub fn blend(&self, blend: Blend) {
-        unsafe {
-            match blend {
-                Blend::Enable(src, dst) => {
-                    gl::Enable(gl::BLEND);
-                    gl::BlendFunc(src, dst);
-                }
-                Blend::Disable => gl::Disable(gl::BLEND),
-            }
-        }
-    }
-
     pub fn draw_with<F: Fn(&Self)>(&mut self, draw: F) {
         if BOUND_FB.swap(self.fb_id, Ordering::SeqCst) != self.fb_id {
             unsafe {
@@ -144,10 +132,4 @@ impl Drop for Framebuffer {
             gl::DeleteTextures(1, self.color_buf as *const _);
         }
     }
-}
-
-// TODO remove GLenum
-pub enum Blend {
-    Enable(gl::types::GLenum, gl::types::GLenum),
-    Disable,
 }
