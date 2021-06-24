@@ -4,10 +4,10 @@ uniform float aspect_ratio = 1.7;
 uniform float ratio = 1.0;
 
 layout (location = 0) in vec2 position;
-layout (location = 1) in vec4 vertColor;
+layout (location = 1) in float vertColor;
 
 layout (location = 0) out vec2 posInterp;
-layout (location = 1) out vec4 colorInterp;
+layout (location = 1) out float colorInterp;
 
 void main() {
     posInterp = position;

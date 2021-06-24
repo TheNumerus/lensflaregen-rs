@@ -70,17 +70,18 @@ impl Default for Ghost {
 }
 
 pub fn gen_ghost_geo(blades: u32) -> Geometry {
-    let mut vert_data = vec![0.0, 0.0, 0.0, 0.0, 0.0, 1.0];
+    let mut vert_data = Vec::with_capacity((blades as usize + 2) * 3);
+    vert_data.extend_from_slice(&[0.0, 0.0, 0.0]);
 
     let mut start = cgmath::vec2(1.0, 0.0);
 
     for _ in 0..=blades {
-        vert_data.extend_from_slice(&[start.x, start.y, 1.0, 1.0, 1.0, 1.0]);
+        vert_data.extend_from_slice(&[start.x, start.y, 1.0]);
         start = Matrix2::from_angle(Deg(360.0 / blades as f32)) * start;
     }
 
     GeometryBuilder::new(vert_data)
         .mode(GeometryType::TriangleFan)
-        .with_attributes(&[AttrSize::Vec2, AttrSize::Vec4])
+        .with_attributes(&[AttrSize::Vec2, AttrSize::Float])
         .build()
 }
