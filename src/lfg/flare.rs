@@ -1,9 +1,9 @@
-use crate::gl_wrapper::{geometry::Geometry, shader::Shader};
+use gl_wrapper::{geometry::Geometry, shader::Shader};
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Flare {
-    color: [f32; 4],
-    style: FlareStyle,
+    pub color: [f32; 4],
+    pub style: FlareStyle,
 }
 
 impl Flare {
@@ -17,9 +17,6 @@ impl Flare {
     pub fn draw(&self, shader: &Shader, quad: &Geometry) {
         shader.set_float_uniform("color", self.color);
         quad.draw();
-    }
-    pub fn set_color(&mut self, color: &[f32; 4]) {
-        self.color = *color;
     }
 }
 

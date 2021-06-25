@@ -10,7 +10,6 @@ use simple_logger::SimpleLogger;
 use rand::prelude::*;
 
 pub mod fps_cap;
-pub mod gl_wrapper;
 pub mod lfg;
 pub mod ui;
 pub mod window;
@@ -36,8 +35,6 @@ fn main() -> Result<()> {
 
     let shader_lib = ShaderLib::new().context("Shader compilation error")?;
     let mut effect = Effect::new();
-
-    let mut flare_color = [1.0_f32, 1.0, 1.0, 1.0];
 
     let mut main_hdr_buf = Framebuffer::hdr(1280, 720);
     let mut side_hdr_buf = Framebuffer::hdr(1280, 720);
@@ -79,6 +76,9 @@ fn main() -> Result<()> {
             }
             _ => {}
         },
+        Event::MainEventsCleared => {
+            context.window().request_redraw();
+        }
         Event::RedrawRequested(_) => {
             let delta = fps_cap.delta();
 
@@ -90,7 +90,6 @@ fn main() -> Result<()> {
             noise.bind(2);
             spectrum_texture.bind(3);
 
-            effect.flare.set_color(&flare_color);
             effect.draw(&shader_lib, &mut main_hdr_buf, &mut side_hdr_buf, &quad, &ghost_geo, &state);
 
             Framebuffer::draw_with_default(|_fb| {
@@ -102,10 +101,9 @@ fn main() -> Result<()> {
 
             Framebuffer::bind_default();
 
-            ui.frame(context, delta, &mut flare_color);
+            ui.frame(context, delta, &mut effect);
 
             context.swap_buffers().unwrap();
-            context.window().request_redraw();
 
             if state.fps_capped {
                 fps_cap.cap();
@@ -117,11 +115,11 @@ fn main() -> Result<()> {
 
 fn generate_noise_texture() -> Texture2d {
     let mut rng = rand::thread_rng();
-    let mut noise_data = [0.5; 64 * 64 * 4];
+    let mut noise_data = [0.5; 64 * 64];
     for val in &mut noise_data {
         *val = rng.gen();
     }
-    Texture2d::new(64, 64, &noise_data, TextureFormat::Rgba)
+    Texture2d::new(64, 64, &noise_data, TextureFormat::R8)
 }
 
 fn generate_spectrum_texture() -> Result<Texture2d> {

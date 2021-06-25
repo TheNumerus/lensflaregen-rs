@@ -12,6 +12,7 @@ impl Texture2d {
         let expected_len = match format {
             TextureFormat::Rgb => width * height * 3,
             TextureFormat::Rgba | TextureFormat::Srgba => width * height * 4,
+            TextureFormat::R8 => width * height,
         };
         assert_eq!(data.len(), expected_len as usize);
 
@@ -24,6 +25,7 @@ impl Texture2d {
             let int_format = match format {
                 TextureFormat::Rgb | TextureFormat::Rgba => gl::RGBA8,
                 TextureFormat::Srgba => gl::SRGB_ALPHA,
+                TextureFormat::R8 => gl::R8,
             };
 
             gl::TexStorage2D(gl::TEXTURE_2D, 1, int_format, width as i32, height as i32);
@@ -64,6 +66,7 @@ pub enum TextureFormat {
     Rgb,
     Rgba,
     Srgba,
+    R8,
 }
 
 impl From<TextureFormat> for GLenum {
@@ -71,6 +74,7 @@ impl From<TextureFormat> for GLenum {
         match tf {
             TextureFormat::Rgb => gl::RGB,
             TextureFormat::Rgba | TextureFormat::Srgba => gl::RGBA,
+            TextureFormat::R8 => gl::RED,
         }
     }
 }

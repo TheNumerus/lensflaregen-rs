@@ -1,11 +1,9 @@
-use cgmath::{prelude::*, vec2, vec3, Deg, Matrix2, Matrix4, Rad};
+use cgmath::{prelude::*, vec2, vec3, Deg, Matrix2, Matrix4};
 
-use crate::gl_wrapper::{
+use gl_wrapper::{
     geometry::{AttrSize, Geometry, GeometryBuilder, GeometryType},
     shader::Shader,
 };
-
-use super::effect::Effect;
 
 pub struct Ghost {
     pub color: [f32; 4],
@@ -34,7 +32,7 @@ impl Ghost {
         }
     }
 
-    pub fn draw(&self, shader: &Shader, flare_pos: (f32, f32), geo: &Geometry, effect: &Effect) {
+    pub fn draw(&self, shader: &Shader, flare_pos: (f32, f32), geo: &Geometry) {
         shader.set_float_uniform("color", self.color);
         shader.set_float_uniform("empty", [self.center_transparency]);
         shader.set_float_uniform("ratio", [self.aspect_ratio]);
@@ -49,7 +47,6 @@ impl Ghost {
 
         let model_m = Matrix4::from_translation(vec3(ghost_x, ghost_y, 0.0)) * Matrix4::from_scale(self.size / 100.0);
         shader.set_matrix_uniform("modelMatrix", *model_m.as_ref());
-        shader.set_matrix_uniform("rotationMatrix", *Matrix4::from_angle_z(Rad(effect.rotation)).as_ref());
 
         geo.draw();
     }

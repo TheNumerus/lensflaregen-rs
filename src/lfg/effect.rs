@@ -1,7 +1,6 @@
-use crate::{
-    gl_wrapper::{framebuffer::Framebuffer, geometry::Geometry},
-    window_state::WindowState,
-};
+use crate::window_state::WindowState;
+use cgmath::{Matrix4, Rad};
+use gl_wrapper::{framebuffer::Framebuffer, geometry::Geometry};
 
 use super::{flare::Flare, ghost::Ghost, shader_lib::ShaderLib};
 
@@ -12,6 +11,7 @@ pub struct Effect {
     pub blades: u8,
     pub pos_x: f32,
     pub pos_y: f32,
+    pub samples: u16,
 }
 
 impl Effect {
@@ -41,6 +41,7 @@ impl Effect {
             blades: 8,
             pos_x: 0.5,
             pos_y: 0.5,
+            samples: 8,
         }
     }
 
@@ -56,6 +57,8 @@ impl Effect {
         // clear main frame
         main_fb.draw_with(|fb| fb.clear());
 
+        let ghost_rotation = Matrix4::from_angle_z(Rad(self.rotation));
+
         for ghost in &self.ghosts {
             // render ghost geometry
             side_fb.draw_with(|fb| {
@@ -63,7 +66,8 @@ impl Effect {
 
                 shader_lib.ghost.bind();
                 shader_lib.ghost.set_float_uniform("aspect_ratio", [state.size.0 as f32 / state.size.1 as f32]);
-                ghost.draw(&shader_lib.ghost, (self.pos_x, self.pos_y), ghost_geo, self);
+                shader_lib.ghost.set_matrix_uniform("rotationMatrix", *ghost_rotation.as_ref());
+                ghost.draw(&shader_lib.ghost, (self.pos_x, self.pos_y), ghost_geo);
             });
 
             // copy distorted ghost geometry
@@ -72,6 +76,7 @@ impl Effect {
                 shader_lib
                     .dispersion
                     .set_float_uniform("res", [state.size.0 as f32 / 64.0, state.size.1 as f32 / 64.0]);
+                shader_lib.dispersion.set_int_uniform("samples", [self.samples as i32]);
                 side_fb.bind_as_color_texture(0);
 
                 ghost.draw_dispersed(&shader_lib.dispersion, &quad);

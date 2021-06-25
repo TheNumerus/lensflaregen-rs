@@ -2,6 +2,8 @@ use glutin::{event::Event, PossiblyCurrent, WindowedContext};
 use imgui::*;
 use std::time::Duration;
 
+use crate::lfg::effect::Effect;
+
 pub struct ImguiUi {
     imgui: imgui::Context,
     platform: imgui_winit_support::WinitPlatform,
@@ -25,7 +27,7 @@ impl ImguiUi {
     }
 
     // TODO have proper state
-    pub fn frame(&mut self, context: &WindowedContext<PossiblyCurrent>, delta: Duration, state: &mut [f32; 4]) {
+    pub fn frame(&mut self, context: &WindowedContext<PossiblyCurrent>, delta: Duration, state: &mut Effect) {
         let io = self.imgui.io_mut();
         self.platform.prepare_frame(io, context.window()).expect("Failed to start frame");
 
@@ -33,13 +35,12 @@ impl ImguiUi {
 
         let ui = self.imgui.frame();
 
-        let color = imgui::EditableColor::Float4(state);
-
         imgui::Window::new(im_str!("FPS counter"))
             .size([300.0, 110.0], Condition::FirstUseEver)
             .build(&ui, || {
                 ui.text(format!("FPS: {}", ui.io().framerate));
-                imgui::ColorEdit::new(im_str!("Flare Color"), color).build(&ui);
+                imgui::ColorEdit::new(im_str!("Flare Color"), imgui::EditableColor::Float4(&mut state.flare.color)).build(&ui);
+                imgui::Slider::new(im_str!("Samples")).range(1..=128).build(&ui, &mut state.samples);
             });
         self.renderer.render(ui);
     }

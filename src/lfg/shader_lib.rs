@@ -1,4 +1,4 @@
-use crate::gl_wrapper::shader::{Shader, ShaderBuilder, ShaderCompilationError};
+use gl_wrapper::shader::{Shader, ShaderBuilder, ShaderCompilationError};
 
 const COMMON_SHADER: &str = include_str!("../../shaders/common.glsl");
 
