@@ -94,3 +94,9 @@ impl TexStorage for u8 {
         gl::UNSIGNED_BYTE
     }
 }
+
+impl TexStorage for u16 {
+    fn gl_type() -> gl::types::GLenum {
+        gl::UNSIGNED_SHORT
+    }
+}

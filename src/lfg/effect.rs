@@ -12,6 +12,7 @@ pub struct Effect {
     pub pos_x: f32,
     pub pos_y: f32,
     pub samples: u16,
+    pub tonemap: bool,
 }
 
 impl Effect {
@@ -42,6 +43,7 @@ impl Effect {
             pos_x: 0.5,
             pos_y: 0.5,
             samples: 8,
+            tonemap: true,
         }
     }
 
@@ -75,7 +77,7 @@ impl Effect {
                 shader_lib.dispersion.bind();
                 shader_lib
                     .dispersion
-                    .set_float_uniform("res", [state.size.0 as f32 / 64.0, state.size.1 as f32 / 64.0]);
+                    .set_float_uniform("res", [state.size.0 as f32 / 128.0, state.size.1 as f32 / 128.0]);
                 shader_lib.dispersion.set_int_uniform("samples", [self.samples as i32]);
                 side_fb.bind_as_color_texture(0);
 
@@ -88,7 +90,7 @@ impl Effect {
             shader_lib.flare.bind();
             shader_lib
                 .flare
-                .set_float_uniform("res", [state.size.0 as f32 / 64.0, state.size.1 as f32 / 64.0]);
+                .set_float_uniform("res", [state.size.0 as f32 / 128.0, state.size.1 as f32 / 128.0]);
             shader_lib.flare.set_float_uniform("flare_position", [self.pos_x, self.pos_y]);
             shader_lib.flare.set_float_uniform("aspect_ratio", [state.size.0 as f32 / state.size.1 as f32]);
             shader_lib.flare.set_float_uniform("blades", [self.blades as f32]);

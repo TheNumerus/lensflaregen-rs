@@ -1,8 +1,8 @@
 use glutin::{event::Event, PossiblyCurrent, WindowedContext};
-use imgui::*;
+use imgui::{im_str, Condition, Ui};
 use std::time::Duration;
 
-use crate::lfg::effect::Effect;
+use crate::lfg::{effect::Effect, flare::FlareStyle};
 
 pub struct ImguiUi {
     imgui: imgui::Context,
@@ -38,10 +38,30 @@ impl ImguiUi {
         imgui::Window::new(im_str!("FPS counter"))
             .size([300.0, 110.0], Condition::FirstUseEver)
             .build(&ui, || {
-                ui.text(format!("FPS: {}", ui.io().framerate));
-                imgui::ColorEdit::new(im_str!("Flare Color"), imgui::EditableColor::Float4(&mut state.flare.color)).build(&ui);
-                imgui::Slider::new(im_str!("Samples")).range(1..=128).build(&ui, &mut state.samples);
+                Self::window_build(&ui, state);
             });
         self.renderer.render(ui);
+    }
+
+    fn window_build(ui: &Ui, state: &mut Effect) {
+        use imgui::{ColorEdit, EditableColor, Slider};
+
+        ui.text(format!("FPS: {}", ui.io().framerate));
+        Slider::new(im_str!("Flare Intensity")).range(0.0..=5.0).build(&ui, &mut state.flare.intensity);
+        ColorEdit::new(im_str!("Flare Color"), EditableColor::Float4(&mut state.flare.color)).build(&ui);
+
+        let mut anam = match state.flare.style {
+            FlareStyle::Normal => false,
+            FlareStyle::Anamorphic => true,
+        };
+        if ui.checkbox(im_str!("Anamorphic flare"), &mut anam) {
+            match anam {
+                true => state.flare.style = FlareStyle::Anamorphic,
+                false => state.flare.style = FlareStyle::Normal,
+            }
+        }
+
+        Slider::new(im_str!("Samples")).range(1..=128).build(&ui, &mut state.samples);
+        ui.checkbox(im_str!("Tonemap"), &mut state.tonemap);
     }
 }

@@ -7,8 +7,6 @@ use glutin::{
 
 use simple_logger::SimpleLogger;
 
-use rand::prelude::*;
-
 pub mod fps_cap;
 pub mod lfg;
 pub mod ui;
@@ -26,6 +24,7 @@ use lfg::{effect::Effect, ghost, shader_lib::ShaderLib};
 use window::Window;
 
 const SPECTRUM_BYTES: &[u8] = include_bytes!("../images/spectral.png");
+const NOISE_BYTES: &[u8] = include_bytes!("../images/noise.png");
 
 fn main() -> Result<()> {
     SimpleLogger::new().init().unwrap();
@@ -42,8 +41,8 @@ fn main() -> Result<()> {
     let quad = geometry::quad();
     let ghost_geo = ghost::gen_ghost_geo(8);
 
-    let noise = generate_noise_texture();
-    let spectrum_texture = generate_spectrum_texture()?;
+    let noise = texture_from_bytes(NOISE_BYTES)?;
+    let spectrum_texture = texture_from_bytes(SPECTRUM_BYTES)?;
 
     window.run(move |event, _, control_flow, ui, context, state| match event {
         Event::WindowEvent { event, .. } => match event {
@@ -94,6 +93,7 @@ fn main() -> Result<()> {
 
             Framebuffer::draw_with_default(|_fb| {
                 shader_lib.tonemap.bind();
+                shader_lib.tonemap.set_int_uniform("tonemap", [effect.tonemap as i32]);
                 main_hdr_buf.bind_as_color_texture(0);
 
                 quad.draw();
@@ -113,23 +113,9 @@ fn main() -> Result<()> {
     });
 }
 
-fn generate_noise_texture() -> Texture2d {
-    let mut rng = rand::thread_rng();
-    let mut noise_data = [0.5; 64 * 64];
-    for val in &mut noise_data {
-        *val = rng.gen();
-    }
-    Texture2d::new(64, 64, &noise_data, TextureFormat::R8)
-}
+fn texture_from_bytes(bytes: &[u8]) -> Result<Texture2d> {
+    let img = image::load_from_memory(bytes)?;
+    let buf = img.as_rgba8().unwrap();
 
-fn generate_spectrum_texture() -> Result<Texture2d> {
-    let spectrum_img = image::load_from_memory(SPECTRUM_BYTES)?;
-    let spectrum = spectrum_img.as_rgba8().unwrap();
-
-    Ok(Texture2d::new(
-        spectrum.width(),
-        spectrum.height(),
-        spectrum.as_flat_samples().samples,
-        TextureFormat::Srgba,
-    ))
+    Ok(Texture2d::new(buf.width(), buf.height(), buf.as_flat_samples().samples, TextureFormat::Rgba))
 }
