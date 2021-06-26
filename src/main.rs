@@ -66,12 +66,23 @@ fn main() -> Result<()> {
                 input:
                     KeyboardInput {
                         state: ElementState::Pressed,
-                        virtual_keycode: Some(glutin::event::VirtualKeyCode::Space),
+                        virtual_keycode: Some(key),
                         ..
                     },
                 ..
             } => {
-                state.fps_capped = !state.fps_capped;
+                use glutin::event::VirtualKeyCode::*;
+                match key {
+                    Space => state.fps_capped = !state.fps_capped,
+                    T => effect.tonemap = !effect.tonemap,
+                    A => {
+                        effect.flare.style = match effect.flare.style {
+                            lfg::flare::FlareStyle::Normal => lfg::flare::FlareStyle::Anamorphic,
+                            lfg::flare::FlareStyle::Anamorphic => lfg::flare::FlareStyle::Normal,
+                        }
+                    }
+                    _ => {}
+                }
             }
             _ => {}
         },

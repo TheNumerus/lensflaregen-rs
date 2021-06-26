@@ -8,7 +8,7 @@ pub struct WindowState {
 impl WindowState {
     pub fn new() -> Self {
         Self {
-            size: (0, 0),
+            size: (1280, 720),
             cursor: (0, 0),
             fps_capped: true,
         }
