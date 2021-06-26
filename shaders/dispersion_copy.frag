@@ -1,6 +1,5 @@
 layout(binding=0) uniform sampler2D ghost;
 layout(binding=2) uniform sampler2D noise;
-layout(binding=3) uniform sampler2D spectral;
 uniform float dispersion = 0.4;
 uniform float distortion = 1.0;
 uniform int samples = 8;
@@ -32,6 +31,14 @@ vec2 distortion_vector() {
     return ( (moved.x * moved.x) + (moved.y * moved.y) ) * moved * -distortion;
 }
 
+vec3 spectrum_dist(float x) {
+    float r = gauss(x, 0.65, 0.03);
+    float g = gauss(x, 0.5, 0.03);
+    float b = gauss(x, 0.35, 0.03);
+
+    return vec3(r, g, b);
+}
+
 void main() {
     vec3 color = vec3(0.0);
     float pixel_offset = texture(noise, uvInterp * res).r * use_jitter;
@@ -45,9 +52,7 @@ void main() {
         float sample_dispersion = ((x * 2.0) - 1.0) * dispersion + 1.0;
         vec4 ghost_color = texture(ghost, uv_scaled(pixel_distortion, sample_dispersion));
 
-        vec4 spectral_tex = texture(spectral, vec2(x, 0.5));
-
-        color += ghost_color.rgb * spectral_tex.rgb;
+        color += ghost_color.rgb * spectrum_dist(x);
 
         x += delta;
     }

@@ -23,7 +23,6 @@ use gl_wrapper::{
 use lfg::{effect::Effect, ghost, shader_lib::ShaderLib};
 use window::Window;
 
-const SPECTRUM_BYTES: &[u8] = include_bytes!("../images/spectral.png");
 const NOISE_BYTES: &[u8] = include_bytes!("../images/noise.png");
 
 fn main() -> Result<()> {
@@ -42,7 +41,6 @@ fn main() -> Result<()> {
     let ghost_geo = ghost::gen_ghost_geo(8);
 
     let noise = texture_from_bytes(NOISE_BYTES)?;
-    let spectrum_texture = texture_from_bytes(SPECTRUM_BYTES)?;
 
     window.run(move |event, _, control_flow, ui, context, state| match event {
         Event::WindowEvent { event, .. } => match event {
@@ -98,7 +96,6 @@ fn main() -> Result<()> {
             });
 
             noise.bind(2);
-            spectrum_texture.bind(3);
 
             effect.draw(&shader_lib, &mut main_hdr_buf, &mut side_hdr_buf, &quad, &ghost_geo, &state);
 
