@@ -94,7 +94,7 @@ fn main() -> Result<()> {
 
             Framebuffer::draw_with_default(|fb| {
                 fb.clear();
-                State::blend(Blend::Enable(gl::SRC_ALPHA, gl::ONE));
+                State::blend(Blend::Enable(gl::ONE, gl::ONE));
             });
 
             noise.bind(2);

@@ -4,7 +4,7 @@ uniform float empty;
 layout (location = 0) in vec2 posInterp;
 layout (location = 1) in float colorInterp;
 
-out vec4 FragColor;
+out vec3 FragColor;
 
 void main() {
     float center = sqrt(pow(posInterp.x, 2.0) + pow(posInterp.y, 2.0));
@@ -14,5 +14,5 @@ void main() {
     } else {
         edge = (1.0 - pow(colorInterp, 40.0) - (gauss(pow(center, empty), 0.0, 0.3)));
     }
-    FragColor = vec4(color.xyz, edge);
+    FragColor = vec3(color.xyz * edge);
 }

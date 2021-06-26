@@ -13,7 +13,7 @@ uniform vec2 ghost_pos;
 
 layout(location = 0) in vec2 uvInterp;
 
-out vec4 FragColor;
+out vec3 FragColor;
 
 vec2 uv_scaled(vec2 uv, float scale) {
     vec2 centered = uv - 0.5;
@@ -29,23 +29,29 @@ vec2 uv_scaled(vec2 uv, float scale) {
 
 vec2 distortion_vector() {
     vec2 moved = uvInterp - 0.5;
-    return ( pow(moved.x, 2.0) + pow(moved.y, 2.0) ) * moved * -distortion;
+    return ( (moved.x * moved.x) + (moved.y * moved.y) ) * moved * -distortion;
 }
 
 void main() {
     vec3 color = vec3(0.0);
+    float pixel_offset = texture(noise, uvInterp * res).r * use_jitter;
+    vec2 pixel_distortion = uvInterp + distortion_vector();
+
+    float x = pixel_offset / float(samples);
+    float delta = 1.0 / float(samples);
+
     for (int i = 0; i < samples; ++i) {
-        float x = (float(i) + texture(noise, uvInterp * res).r * use_jitter) / float(samples);
-        vec4 spectral_tex = texture(spectral, vec2(x, x));
+        float sample_dispersion = ((x * 2.0) - 1.0) * dispersion + 1.0;
+        vec4 ghost_color = texture(ghost, uv_scaled(pixel_distortion, sample_dispersion));
 
-        float sample_dispersion = (x - 0.5) * 2.0 * (dispersion) + 1.0;
-
-        vec4 ghost_color = texture(ghost, uv_scaled(uvInterp + distortion_vector(), sample_dispersion));
+        vec4 spectral_tex = texture(spectral, vec2(x, 0.5));
 
         color += ghost_color.rgb * spectral_tex.rgb;
+
+        x += delta;
     }
 
     color /= float(samples);
 
-    FragColor = vec4(color * intensity * master_intensity, 1.0);
+    FragColor = color * intensity * master_intensity;
 }
