@@ -81,7 +81,7 @@ impl Effect {
                 shader_lib.dispersion.set_int_uniform("samples", [self.samples as i32]);
                 side_fb.bind_as_color_texture(0);
 
-                ghost.draw_dispersed(&shader_lib.dispersion, &quad);
+                ghost.draw_dispersed(&shader_lib.dispersion, (self.pos_x, self.pos_y), &quad);
             });
         }
 

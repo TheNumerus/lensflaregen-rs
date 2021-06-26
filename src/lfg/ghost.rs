@@ -15,6 +15,7 @@ pub struct Ghost {
     pub intensity: f32,
     pub center_transparency: f32,
     pub aspect_ratio: f32,
+    pub dispersion_center: DispersionCenter,
 }
 
 impl Ghost {
@@ -29,6 +30,7 @@ impl Ghost {
             distortion: 0.9,
             center_transparency: 1.0,
             aspect_ratio: 1.0,
+            dispersion_center: DispersionCenter::Image,
         }
     }
 
@@ -51,10 +53,26 @@ impl Ghost {
         geo.draw();
     }
 
-    pub fn draw_dispersed(&self, shader: &Shader, quad: &Geometry) {
+    pub fn draw_dispersed(&self, shader: &Shader, flare_pos: (f32, f32), quad: &Geometry) {
         shader.set_float_uniform("intensity", [self.intensity]);
         shader.set_float_uniform("dispersion", [self.dispersion]);
         shader.set_float_uniform("distortion", [self.distortion]);
+
+        let center = match self.dispersion_center {
+            DispersionCenter::Ghost => true,
+            DispersionCenter::Image => false,
+        };
+
+        let mut ghost_x = ((flare_pos.0 - 0.5) * 2.0) * self.offset;
+        let mut ghost_y = ((flare_pos.1 - 0.5) * 2.0) * self.offset;
+
+        let flare_vector = (vec2(flare_pos.0, flare_pos.1) - vec2(0.5, 0.5)).normalize();
+        // add perpendicular offset
+        ghost_x += flare_vector.y * self.perpendicular_offset;
+        ghost_y += -flare_vector.x * self.perpendicular_offset;
+
+        shader.set_int_uniform("disperse_from_ghost_center", [center as i32]);
+        shader.set_float_uniform("ghost_pos", [ghost_x, ghost_y]);
 
         quad.draw();
     }
@@ -81,4 +99,10 @@ pub fn gen_ghost_geo(blades: u32) -> Geometry {
         .mode(GeometryType::TriangleFan)
         .with_attributes(&[AttrSize::Vec2, AttrSize::Float])
         .build()
+}
+
+#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
+pub enum DispersionCenter {
+    Ghost,
+    Image,
 }
