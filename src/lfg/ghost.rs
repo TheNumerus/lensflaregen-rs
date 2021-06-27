@@ -1,4 +1,4 @@
-use cgmath::{prelude::*, vec2, vec3, Deg, Matrix2, Matrix4};
+use cgmath::{prelude::*, vec2, Deg, Matrix2, Matrix4, Vector2};
 
 use gl_wrapper::{
     geometry::{AttrSize, Geometry, GeometryBuilder, GeometryType},
@@ -39,15 +39,9 @@ impl Ghost {
         shader.set_float_uniform("empty", [self.center_transparency]);
         shader.set_float_uniform("ratio", [self.aspect_ratio]);
 
-        let mut ghost_x = ((flare_pos.0 - 0.5) * 2.0) * self.offset;
-        let mut ghost_y = ((flare_pos.1 - 0.5) * 2.0) * self.offset;
+        let ghost_pos = self.ghost_pos_from_flare_pos(flare_pos);
 
-        let flare_vector = (vec2(flare_pos.0, flare_pos.1) - vec2(0.5, 0.5)).normalize();
-        // add perpendicular offset
-        ghost_x += flare_vector.y * self.perpendicular_offset;
-        ghost_y += -flare_vector.x * self.perpendicular_offset;
-
-        let model_m = Matrix4::from_translation(vec3(ghost_x, ghost_y, 0.0)) * Matrix4::from_scale(self.size / 100.0);
+        let model_m = Matrix4::from_translation(ghost_pos.extend(0.0)) * Matrix4::from_scale(self.size / 100.0);
         shader.set_matrix_uniform("modelMatrix", *model_m.as_ref());
 
         geo.draw();
@@ -63,18 +57,29 @@ impl Ghost {
             DispersionCenter::Image => false,
         };
 
-        let mut ghost_x = ((flare_pos.0 - 0.5) * 2.0) * self.offset;
-        let mut ghost_y = ((flare_pos.1 - 0.5) * 2.0) * self.offset;
-
-        let flare_vector = (vec2(flare_pos.0, flare_pos.1) - vec2(0.5, 0.5)).normalize();
-        // add perpendicular offset
-        ghost_x += flare_vector.y * self.perpendicular_offset;
-        ghost_y += -flare_vector.x * self.perpendicular_offset;
-
         shader.set_int_uniform("disperse_from_ghost_center", [center as i32]);
-        shader.set_float_uniform("ghost_pos", [ghost_x, ghost_y]);
+        if center {
+            let ghost_pos = self.ghost_pos_from_flare_pos(flare_pos);
+            shader.set_float_uniform("ghost_pos", [ghost_pos.x, ghost_pos.y]);
+        }
 
         quad.draw();
+    }
+
+    fn ghost_pos_from_flare_pos(&self, flare_pos: (f32, f32)) -> Vector2<f32> {
+        let flare_vec = Vector2::from(flare_pos);
+
+        // map from <0.0; 1.0> to <-1.0; 1.0>
+        let mut ghost_pos = (flare_vec * 2.0 - Vector2::from_value(1.0)) * self.offset;
+
+        // mapped to direction vector from image center
+        let flare_vec_mapped = (flare_vec - vec2(0.5, 0.5)).normalize();
+
+        // add perpendicular offset
+        ghost_pos.x += flare_vec_mapped.y * self.perpendicular_offset;
+        ghost_pos.y += -flare_vec_mapped.x * self.perpendicular_offset;
+
+        ghost_pos
     }
 }
 
