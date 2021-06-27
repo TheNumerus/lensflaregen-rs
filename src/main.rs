@@ -20,7 +20,11 @@ use gl_wrapper::{
     state::{Blend, State},
     texture::{Texture2d, TextureFormat},
 };
-use lfg::{effect::Effect, ghost, shader_lib::ShaderLib};
+use lfg::{
+    effect::{ApertureShape, Effect},
+    ghost,
+    shader_lib::ShaderLib,
+};
 use window::Window;
 
 const NOISE_BYTES: &[u8] = include_bytes!("../images/noise.png");
@@ -35,13 +39,16 @@ fn main() -> Result<()> {
     let mut fps_cap = FpsCap::with_target_fps(60);
 
     let shader_lib = ShaderLib::new().context("Shader compilation error")?;
-    let mut effect = Effect::new();
 
     let mut main_hdr_buf = Framebuffer::hdr(WIDTH, HEIGHT);
     let mut side_hdr_buf = Framebuffer::hdr(WIDTH, HEIGHT);
-
     let quad = geometry::quad();
-    let ghost_geo = ghost::gen_ghost_geo(8);
+
+    let blades = 8;
+
+    let ghost_geo = ghost::gen_ghost_geo(blades);
+    let mut effect = Effect::new();
+    effect.aperture_shape = ApertureShape::from_blade_count(blades as u8)?;
 
     let noise = texture_from_bytes(NOISE_BYTES)?;
 

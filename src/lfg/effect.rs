@@ -1,14 +1,16 @@
+use std::{convert::TryFrom, num::NonZeroU8};
+
 use crate::window_state::WindowState;
 use cgmath::{Matrix4, Rad};
 use gl_wrapper::{framebuffer::Framebuffer, geometry::Geometry};
 
-use super::{flare::Flare, ghost::Ghost, shader_lib::ShaderLib};
+use super::{flare::Flare, ghost::Ghost, shader_lib::ShaderLib, LfgError};
 
 pub struct Effect {
     pub flare: Flare,
     pub ghosts: Vec<Ghost>,
     pub rotation: f32,
-    pub blades: u8,
+    pub aperture_shape: ApertureShape,
     pub pos_x: f32,
     pub pos_y: f32,
     pub samples: u16,
@@ -39,9 +41,9 @@ impl Effect {
                 },
             ],
             rotation: 0.2,
-            blades: 8,
-            pos_x: 0.5,
-            pos_y: 0.5,
+            aperture_shape: ApertureShape::from_blade_count(8).unwrap(),
+            pos_x: 0.8,
+            pos_y: 0.8,
             samples: 8,
             tonemap: true,
         }
@@ -93,7 +95,7 @@ impl Effect {
                 .set_float_uniform("res", [state.size.0 as f32 / 128.0, state.size.1 as f32 / 128.0]);
             shader_lib.flare.set_float_uniform("flare_position", [self.pos_x, self.pos_y]);
             shader_lib.flare.set_float_uniform("aspect_ratio", [state.size.0 as f32 / state.size.1 as f32]);
-            shader_lib.flare.set_float_uniform("blades", [self.blades as f32]);
+            shader_lib.flare.set_float_uniform("blades", [self.aperture_shape.get_blade_count() as f32]);
             self.flare.draw(&shader_lib.flare, &quad);
         });
     }
@@ -101,5 +103,36 @@ impl Effect {
     pub fn set_position(&mut self, (pos_x, pos_y): (f32, f32)) {
         self.pos_x = pos_x;
         self.pos_y = pos_y;
+    }
+}
+
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+pub enum ApertureShape {
+    Polygonal(NonZeroU8),
+    Circular,
+}
+
+impl ApertureShape {
+    pub fn get_blade_count(&self) -> u8 {
+        match self {
+            ApertureShape::Polygonal(b) => b.get(),
+            ApertureShape::Circular => 255,
+        }
+    }
+
+    pub fn from_blade_count(value: u8) -> Result<Self, LfgError> {
+        Self::try_from(value)
+    }
+}
+
+impl TryFrom<u8> for ApertureShape {
+    type Error = LfgError;
+
+    fn try_from(value: u8) -> Result<Self, Self::Error> {
+        match value {
+            0 => Ok(ApertureShape::Circular),
+            1 | 2 => Err(LfgError::InvalidEffectValue("aperture shape".into())),
+            _ => Ok(ApertureShape::Polygonal(NonZeroU8::new(value).unwrap())),
+        }
     }
 }
