@@ -16,10 +16,10 @@ pub struct Window {
 }
 
 impl Window {
-    pub fn new() -> Self {
+    pub fn with_size(width: u32, height: u32) -> Self {
         let event_loop = EventLoop::new();
         let window = WindowBuilder::new()
-            .with_inner_size(PhysicalSize::new(1280, 720))
+            .with_inner_size(PhysicalSize::new(width, height))
             .with_title("Lens Flare Generator");
         let context = ContextBuilder::new().with_srgb(false).build_windowed(window, &event_loop).unwrap();
         let context = unsafe { context.make_current().unwrap() };

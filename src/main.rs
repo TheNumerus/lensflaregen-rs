@@ -25,17 +25,20 @@ use window::Window;
 
 const NOISE_BYTES: &[u8] = include_bytes!("../images/noise.png");
 
+const WIDTH: u32 = 1280;
+const HEIGHT: u32 = 720;
+
 fn main() -> Result<()> {
     SimpleLogger::new().init().unwrap();
 
-    let window = Window::new();
+    let window = Window::with_size(WIDTH, HEIGHT);
     let mut fps_cap = FpsCap::with_target_fps(60);
 
     let shader_lib = ShaderLib::new().context("Shader compilation error")?;
     let mut effect = Effect::new();
 
-    let mut main_hdr_buf = Framebuffer::hdr(1280, 720);
-    let mut side_hdr_buf = Framebuffer::hdr(1280, 720);
+    let mut main_hdr_buf = Framebuffer::hdr(WIDTH, HEIGHT);
+    let mut side_hdr_buf = Framebuffer::hdr(WIDTH, HEIGHT);
 
     let quad = geometry::quad();
     let ghost_geo = ghost::gen_ghost_geo(8);

@@ -6,9 +6,9 @@ pub struct WindowState {
 }
 
 impl WindowState {
-    pub fn new() -> Self {
+    pub fn with_size(width: u32, height: u32) -> Self {
         Self {
-            size: (1280, 720),
+            size: (width, height),
             cursor: (0, 0),
             fps_capped: true,
         }
@@ -21,6 +21,6 @@ impl WindowState {
 
 impl Default for WindowState {
     fn default() -> Self {
-        Self::new()
+        Self::with_size(1280, 720)
     }
 }
