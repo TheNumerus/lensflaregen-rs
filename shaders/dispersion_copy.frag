@@ -9,6 +9,7 @@ uniform vec2 res = vec2(1280.0 / 64.0, 720.0 / 64.0);
 uniform float use_jitter = 1.0;
 uniform bool disperse_from_ghost_center = false;
 uniform vec2 ghost_pos;
+uniform vec2 jitter_offset;
 
 layout(location = 0) in vec2 uvInterp;
 
@@ -41,7 +42,7 @@ vec3 spectrum_dist(float x) {
 
 void main() {
     vec3 color = vec3(0.0);
-    float pixel_offset = texture(noise, uvInterp * res).r * use_jitter;
+    float pixel_offset = texture(noise, uvInterp * res + jitter_offset).r * use_jitter;
     vec2 pixel_distortion = uvInterp + distortion_vector();
 
     float samples_f = float(samples);

@@ -71,7 +71,7 @@ impl Effect {
                 shader_lib.ghost.bind();
                 shader_lib.ghost.set_float_uniform("aspect_ratio", [state.size.0 as f32 / state.size.1 as f32]);
                 shader_lib.ghost.set_matrix_uniform("rotationMatrix", *ghost_rotation.as_ref());
-                ghost.draw(&shader_lib.ghost, (self.pos_x, self.pos_y), ghost_geo);
+                ghost.draw(&shader_lib.ghost, state, (self.pos_x, self.pos_y), ghost_geo);
             });
 
             // copy distorted ghost geometry
@@ -83,7 +83,7 @@ impl Effect {
                 shader_lib.dispersion.set_int_uniform("samples", [self.samples as i32]);
                 side_fb.bind_as_color_texture(0);
 
-                ghost.draw_dispersed(&shader_lib.dispersion, (self.pos_x, self.pos_y), &quad);
+                ghost.draw_dispersed(&shader_lib.dispersion, state, (self.pos_x, self.pos_y), &quad);
             });
         }
 

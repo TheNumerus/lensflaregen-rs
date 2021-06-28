@@ -5,6 +5,8 @@ use gl_wrapper::{
     shader::Shader,
 };
 
+use crate::window_state::WindowState;
+
 pub struct Ghost {
     pub color: [f32; 4],
     pub offset: f32,
@@ -34,7 +36,7 @@ impl Ghost {
         }
     }
 
-    pub fn draw(&self, shader: &Shader, flare_pos: (f32, f32), geo: &Geometry) {
+    pub fn draw(&self, shader: &Shader, _state: &WindowState, flare_pos: (f32, f32), geo: &Geometry) {
         shader.set_float_uniform("color", self.color);
         shader.set_float_uniform("empty", [self.center_transparency]);
         shader.set_float_uniform("ratio", [self.aspect_ratio]);
@@ -47,7 +49,7 @@ impl Ghost {
         geo.draw();
     }
 
-    pub fn draw_dispersed(&self, shader: &Shader, flare_pos: (f32, f32), quad: &Geometry) {
+    pub fn draw_dispersed(&self, shader: &Shader, state: &WindowState, flare_pos: (f32, f32), quad: &Geometry) {
         shader.set_float_uniform("intensity", [self.intensity]);
         shader.set_float_uniform("dispersion", [self.dispersion]);
         shader.set_float_uniform("distortion", [self.distortion]);
@@ -57,7 +59,16 @@ impl Ghost {
             DispersionCenter::Image => false,
         };
 
+        let jitter_offset = match state.frame_num % 4 {
+            0 => [0.0, 0.0],
+            1 => [0.5, 0.0],
+            2 => [0.5, 0.5],
+            3 => [0.0, 0.5],
+            _ => [0.0, 0.0],
+        };
+
         shader.set_int_uniform("disperse_from_ghost_center", [center as i32]);
+        shader.set_float_uniform("jitter_offset", jitter_offset);
         if center {
             let ghost_pos = self.ghost_pos_from_flare_pos(flare_pos);
             shader.set_float_uniform("ghost_pos", [ghost_pos.x, ghost_pos.y]);

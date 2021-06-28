@@ -120,6 +120,7 @@ fn main() -> Result<()> {
             Framebuffer::bind_default();
 
             ui.frame(context, delta, &mut effect);
+            state.frame_num += 1;
 
             context.swap_buffers().unwrap();
 
