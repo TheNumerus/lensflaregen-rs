@@ -110,24 +110,38 @@ impl From<ShaderType> for GLenum {
     }
 }
 
-unsafe fn compile_shader(shader_type: ShaderType, src: &str, includes: &[&str]) -> Result<u32, ShaderCompilationError> {
+unsafe fn compile_shader(shader_type: ShaderType, src: &str, includes: &[&str], defines: &CString) -> Result<u32, ShaderCompilationError> {
     let shader_id = gl::CreateShader(shader_type.into());
 
-    let mut sources = Vec::with_capacity(includes.len() + 1);
-    let mut pointers = Vec::with_capacity(includes.len() + 1);
+    // all includes + main source + defines
+    let mut sources = Vec::with_capacity(includes.len() + 2);
+    let mut pointers = Vec::with_capacity(includes.len() + 2);
 
+    // add shared code
     for inc in includes {
-        sources.push(CString::new(*inc).unwrap());
+        if inc.ends_with('\n') {
+            sources.push(CString::new(*inc).unwrap());
+        } else {
+            sources.push(CString::new(format!("{}\n", inc).as_str()).unwrap());
+        }
     }
 
-    let src_cstr = CString::new(src).unwrap();
-    sources.push(src_cstr);
+    // add defines
+    sources.push(defines.clone());
 
+    // add main file
+    if src.ends_with('\n') {
+        sources.push(CString::new(src).unwrap());
+    } else {
+        sources.push(CString::new(format!("{}\n", src).as_str()).unwrap());
+    }
+
+    // create pointer vector
     for c_str in &sources {
         pointers.push(c_str.as_ptr());
     }
 
-    gl::ShaderSource(shader_id, sources.len() as i32, pointers.as_ptr(), ptr::null());
+    gl::ShaderSource(shader_id, pointers.len() as i32, pointers.as_ptr(), ptr::null());
     gl::CompileShader(shader_id);
 
     let mut success = 0;
@@ -153,12 +167,15 @@ pub enum ShaderCompilationError {
     ProgramError(ShaderType, String),
     #[error("Shader linking error: \n{0}")]
     LinkageError(String),
+    #[error("Error in source code: {0}")]
+    SourceError(String),
 }
 
 pub struct ShaderBuilder<'a> {
     vert: &'a str,
     frag: &'a str,
     includes: Vec<&'a str>,
+    defines: Vec<String>,
 }
 
 impl<'a> ShaderBuilder<'a> {
@@ -167,6 +184,7 @@ impl<'a> ShaderBuilder<'a> {
             vert,
             frag,
             includes: vec![SHADER_VERSION],
+            defines: Vec::new(),
         }
     }
 
@@ -175,10 +193,22 @@ impl<'a> ShaderBuilder<'a> {
         self
     }
 
+    pub fn with_define<T: AsRef<str>>(&mut self, def: T) -> &mut Self {
+        self.defines.push(def.as_ref().to_owned());
+        self
+    }
+
     pub fn build(&self) -> Result<Shader, ShaderCompilationError> {
         unsafe {
-            let vert_id = compile_shader(ShaderType::Vertex, self.vert, &self.includes)?;
-            let frag_id = compile_shader(ShaderType::Fragment, self.frag, &self.includes)?;
+            let defines_merged = self.defines.iter().map(|d| format!("#define {} 1\n", d)).fold(String::new(), |mut acc, def| {
+                acc.push_str(def.as_str());
+                acc
+            });
+
+            let defines_cstring = CString::new(defines_merged).map_err(|_e| ShaderCompilationError::SourceError("Unexpected zero byte in defines".into()))?;
+
+            let vert_id = compile_shader(ShaderType::Vertex, self.vert, &self.includes, &defines_cstring)?;
+            let frag_id = compile_shader(ShaderType::Fragment, self.frag, &self.includes, &defines_cstring)?;
 
             let mut success = 0;
             let mut info_log = [0_i8; MAX_ERR_LEN as usize];

@@ -89,14 +89,17 @@ impl Effect {
 
         // render flare on top
         main_fb.draw_with(|_fb| {
-            shader_lib.flare.bind();
-            shader_lib
-                .flare
-                .set_float_uniform("res", [state.size.0 as f32 / 128.0, state.size.1 as f32 / 128.0]);
-            shader_lib.flare.set_float_uniform("flare_position", [self.pos_x, self.pos_y]);
-            shader_lib.flare.set_float_uniform("aspect_ratio", [state.size.0 as f32 / state.size.1 as f32]);
-            shader_lib.flare.set_float_uniform("blades", [self.aperture_shape.get_blade_count() as f32]);
-            self.flare.draw(&shader_lib.flare, &quad);
+            let shader = match self.flare.style {
+                super::flare::FlareStyle::Normal => &shader_lib.flare,
+                super::flare::FlareStyle::Anamorphic => &shader_lib.flare_anam,
+            };
+
+            shader.bind();
+            shader.set_float_uniform("res", [state.size.0 as f32 / 128.0, state.size.1 as f32 / 128.0]);
+            shader.set_float_uniform("flare_position", [self.pos_x, self.pos_y]);
+            shader.set_float_uniform("aspect_ratio", [state.size.0 as f32 / state.size.1 as f32]);
+            shader.set_float_uniform("blades", [self.aperture_shape.get_blade_count() as f32]);
+            self.flare.draw(shader, &quad);
         });
     }
 

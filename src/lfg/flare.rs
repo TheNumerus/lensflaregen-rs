@@ -19,10 +19,13 @@ impl Flare {
     pub fn draw(&self, shader: &Shader, quad: &Geometry) {
         shader.set_float_uniform("color", self.color);
         shader.set_float_uniform("intensity", [self.intensity]);
-        match self.style {
-            FlareStyle::Normal => shader.set_float_uniform("anamorphic", [0.0]),
-            FlareStyle::Anamorphic => shader.set_float_uniform("anamorphic", [1.0]),
-        }
+
+        let anam_uniform = match self.style {
+            FlareStyle::Normal => false,
+            FlareStyle::Anamorphic => true,
+        };
+
+        shader.set_int_uniform("anamorphic", [anam_uniform as i32]);
         quad.draw();
     }
 }

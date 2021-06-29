@@ -13,6 +13,7 @@ const DISPERSION: &str = include_str!("../../shaders/dispersion_copy.frag");
 
 pub struct ShaderLib {
     pub flare: Shader,
+    pub flare_anam: Shader,
     pub ghost: Shader,
     pub dispersion: Shader,
     pub tonemap: Shader,
@@ -21,12 +22,17 @@ pub struct ShaderLib {
 impl ShaderLib {
     pub fn new() -> Result<Self, ShaderCompilationError> {
         let flare = ShaderBuilder::new(QUAD_VERT, FLARE_FRAG).with_common_code(COMMON_SHADER).build()?;
+        let flare_anam = ShaderBuilder::new(QUAD_VERT, FLARE_FRAG)
+            .with_common_code(COMMON_SHADER)
+            .with_define("ANAMORPHIC")
+            .build()?;
         let ghost = ShaderBuilder::new(GHOST_VERT, GHOST_FRAG).with_common_code(COMMON_SHADER).build()?;
         let tonemap = ShaderBuilder::new(QUAD_VERT, TONEMAP).with_common_code(COMMON_SHADER).build()?;
         let dispersion = ShaderBuilder::new(QUAD_VERT, DISPERSION).with_common_code(COMMON_SHADER).build()?;
 
         let lib = Self {
             flare,
+            flare_anam,
             ghost,
             dispersion,
             tonemap,

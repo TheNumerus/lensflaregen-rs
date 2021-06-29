@@ -7,13 +7,13 @@ uniform float blades = 12.0;
 uniform float ray_intensity = 1.0;
 uniform float rotation;
 uniform float master_intensity = 1.0;
-uniform float anamorphic = 0.0;
+uniform bool anamorphic = false;
 uniform vec2 res = vec2(1280.0 / 64.0, 720.0 / 64.0);
 layout (binding = 2) uniform sampler2D noise;
 
 layout (location = 0) in vec2 uvInterp;
 
-out vec4 FragColor;
+out vec3 FragColor;
 
 float rays(float distance, float norm_angle) {
     float angle = norm_angle * 2.0 * PI * blades + PI;
@@ -53,9 +53,9 @@ void main() {
     float noise_ring_intensity = gauss(dist * noise_ring_extrusion / (size / 10.0), 0.21, 0.01);
     float noise_ring = rad_noise * noise_ring_intensity;
 
-    float dither_noise = (texture(noise, uvInterp * res).r - 0.5) * 0.001;
+    float flare_value;
 
-    if (anamorphic > 0.5) {
+    #if ANAMORPHIC
         float anam_ring = (noise_ring) * 0.2;
         float anam_flare = ((gauss(dist, 0.0, size / 200.0) + anam_ring) + gauss(dist, 0.0, size / 2000.0)) * intensity;
 
@@ -65,18 +65,16 @@ void main() {
         float anam_ray_base = flare_base.y * ray_distort / ray_fade;
         float anam_ray = min(1.0, max(0.0, 1.0 - 80.0 * (abs(anam_ray_base) - 0.01))) * ray_intensity;
 
-        float anam = max(anam_flare + anam_ray * 1.0, anam_ray) * gauss(flare_base.x, 0.0, 0.5);
-
-        FragColor = vec4(anam, anam, anam, 1.0) * color * master_intensity + dither_noise;
-    } else {
+        flare_value = max(anam_flare + anam_ray * 1.0, anam_ray) * gauss(flare_base.x, 0.0, 0.5);
+    #else
         float flare = gauss(dist, 0.0, size / 100.0);
 
         float rays_value = mix(noise_ring, rays(dist, angle) * rad_noise, blade_count_to_ray_intensity);
 
         float ray_center = 2.0 * gauss(dist, 0.0, 0.02);
 
-        float sum = (flare * intensity) + ((rays_value + ray_center) * ray_intensity);
+        flare_value = (flare * intensity) + ((rays_value + ray_center) * ray_intensity);
+    #endif
 
-        FragColor = vec4(sum, sum, sum, 1.0) * color * master_intensity + dither_noise;
-    }
+    FragColor = vec3(flare_value) * color.rgb * master_intensity;
 }
