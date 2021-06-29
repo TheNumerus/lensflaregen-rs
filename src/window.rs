@@ -1,3 +1,5 @@
+use std::time::Instant;
+
 use glutin::{
     dpi::PhysicalSize,
     event::Event,
@@ -47,10 +49,24 @@ impl Window {
             mut state,
         } = self;
 
+        let mut last_frame = Instant::now();
+
         event_loop.run(move |event, target, flow| {
             *flow = ControlFlow::Poll;
 
-            ui.handle_events(&context, &event);
+            match &event {
+                Event::NewEvents(_) => {
+                    let delta = Instant::now() - last_frame;
+                    last_frame = Instant::now();
+                    ui.imgui_mut().io_mut().update_delta_time(delta);
+                }
+                Event::MainEventsCleared => {
+                    ui.prepare_frame(&context);
+                }
+                _ => {
+                    ui.handle_events(&context, &event);
+                }
+            }
 
             event_handler(event, target, flow, &mut ui, &context, &mut state);
         });

@@ -1,7 +1,7 @@
 use anyhow::{Context as _, Result};
 
 use glutin::{
-    event::{ElementState, Event, KeyboardInput, WindowEvent},
+    event::{ElementState, Event, KeyboardInput, MouseButton, WindowEvent},
     event_loop::ControlFlow,
 };
 
@@ -68,7 +68,6 @@ fn main() -> Result<()> {
             }
             WindowEvent::CursorMoved { position, .. } => {
                 state.cursor = (position.x as u32, position.y as u32);
-                effect.set_position(state.relative_cursor());
             }
             WindowEvent::KeyboardInput {
                 input:
@@ -92,13 +91,22 @@ fn main() -> Result<()> {
                     _ => {}
                 }
             }
+            WindowEvent::MouseInput { button, state: el_state, .. } => {
+                if let MouseButton::Left = button {
+                    state.mouse_left_button_pressed = el_state == ElementState::Pressed;
+                }
+            }
             _ => {}
         },
         Event::MainEventsCleared => {
+            if state.mouse_left_button_pressed && !state.ui_focused {
+                effect.set_position(state.relative_cursor());
+            }
+
             context.window().request_redraw();
         }
         Event::RedrawRequested(_) => {
-            let delta = fps_cap.delta();
+            fps_cap.delta();
 
             Framebuffer::draw_with_default(|fb| {
                 fb.clear();
@@ -119,7 +127,7 @@ fn main() -> Result<()> {
 
             Framebuffer::bind_default();
 
-            ui.frame(context, delta, &mut effect);
+            ui.render_frame(context, &mut effect, state);
             state.frame_num += 1;
 
             context.swap_buffers().unwrap();
