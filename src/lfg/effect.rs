@@ -1,7 +1,7 @@
 use std::{convert::TryFrom, num::NonZeroU8};
 
 use crate::window_state::WindowState;
-use cgmath::{Matrix4, Rad};
+use cgmath::{Matrix2, Matrix4, Rad};
 use gl_wrapper::{framebuffer::Framebuffer, geometry::Geometry};
 
 use super::{flare::Flare, ghost::Ghost, shader_lib::ShaderLib, LfgError};
@@ -99,6 +99,8 @@ impl Effect {
             shader.set_float_uniform("flare_position", [self.pos_x, self.pos_y]);
             shader.set_float_uniform("aspect_ratio", [state.size.0 as f32 / state.size.1 as f32]);
             shader.set_float_uniform("blades", [self.aperture_shape.get_blade_count() as f32]);
+
+            shader.set_matrix_uniform("texture_rotation", *Matrix2::from_angle(Rad(self.rotation)).as_ref());
             self.flare.draw(shader, &quad);
         });
     }

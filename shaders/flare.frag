@@ -9,6 +9,7 @@ uniform float rotation;
 uniform float master_intensity = 1.0;
 uniform bool anamorphic = false;
 uniform vec2 res = vec2(1280.0 / 64.0, 720.0 / 64.0);
+uniform mat2 texture_rotation;
 layout (binding = 2) uniform sampler2D noise;
 
 layout (location = 0) in vec2 uvInterp;
@@ -24,13 +25,7 @@ float rays(float distance, float norm_angle) {
 }
 
 float radial_noise(float dist, float angle) {
-    float rot = 0.1;
-
-    mat2 noise_rot;
-    noise_rot[0] = vec2(-cos(rot), sin(rot));
-    noise_rot[1] = vec2(-sin(rot), cos(rot));
-
-    return texture(noise, vec2(dist * 0.001, angle) * noise_rot * 5.0).r;
+    return texture(noise, vec2(dist * 0.001, angle) * texture_rotation * 5.0).r;
 }
 
 void main() {
