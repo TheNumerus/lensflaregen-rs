@@ -26,12 +26,6 @@ impl Flare {
         shader.set_float_uniform("size", [self.size]);
         shader.set_float_uniform("ray_intensity", [self.ray_intensity]);
 
-        let anam_uniform = match self.style {
-            FlareStyle::Normal => false,
-            FlareStyle::Anamorphic => true,
-        };
-
-        shader.set_int_uniform("anamorphic", [anam_uniform as i32]);
         quad.draw();
     }
 }

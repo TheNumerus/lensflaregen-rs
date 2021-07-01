@@ -95,7 +95,6 @@ impl Effect {
             };
 
             shader.bind();
-            shader.set_float_uniform("res", [state.size.0 as f32 / 128.0, state.size.1 as f32 / 128.0]);
             shader.set_float_uniform("flare_position", [self.pos_x, self.pos_y]);
             shader.set_float_uniform("aspect_ratio", [state.size.0 as f32 / state.size.1 as f32]);
             shader.set_float_uniform("blades", [self.aperture_shape.get_blade_count() as f32]);
